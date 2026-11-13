@@ -271,7 +271,7 @@ export function ReviewsPage() {
           <button type="button" className="btn primary" onClick={() => void tryRecord()}>
             Find matches
           </button>
-          <span className="faint" style={{ fontSize: 12.5 }}>Nothing is saved</span>
+          <span className="faint" style={{ fontSize: 13 }}>Nothing is saved</span>
         </div>
         {trying ? (
           <div className="card-b" style={{ display: 'grid', gap: 8 }}>
@@ -291,7 +291,7 @@ export function ReviewsPage() {
                   </div>
                   <span className="muted">{[row.city, row.state].filter(Boolean).join(', ')} · {row.specialty}</span>
                   <span className="score">{Number(row.score || 0).toFixed(2)}</span>
-                  <span className="muted" style={{ fontSize: 12.5 }}>
+                  <span className="muted" style={{ fontSize: 13 }}>
                     {row.reasons?.length ? `Matched on ${row.reasons.join(', ')}` : 'Weak match'}
                   </span>
                 </Link>
@@ -369,7 +369,7 @@ export function ReviewsPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className="faint" style={{ fontSize: 12.5 }}>
+              <span className="faint" style={{ fontSize: 13 }}>
                 {measurable
                   ? 'Measured on stored scores and labels. Payments always go to compliance and are not counted. Simulation only.'
                   : 'Payments always go to compliance and are not counted. Simulation only. Accuracy cannot be measured until labels exist.'}
@@ -654,7 +654,7 @@ function CaseDetail({
                   </button>
                 ))}
               </div>
-              {candidates.length < 3 ? <p className="muted" style={{ margin: '10px 0 0', fontSize: 12.5 }}>Only {candidates.length} plausible doctor{candidates.length > 1 ? 's' : ''} found.</p> : null}
+              {candidates.length < 3 ? <p className="muted" style={{ margin: '10px 0 0', fontSize: 13 }}>Only {candidates.length} plausible doctor{candidates.length > 1 ? 's' : ''} found.</p> : null}
             </div>
           </div>
           <div className="card">

@@ -392,7 +392,7 @@ function Records({ rows, pending }: { rows: Row[]; pending: ReviewCase[] }) {
             {source} <span className="faint">({list.length})</span>
           </h3>
           <div className="tw">
-            <table>
+            <table className="recs">
               <thead>
                 <tr>
                   <th>Record</th>
@@ -409,7 +409,7 @@ function Records({ rows, pending }: { rows: Row[]; pending: ReviewCase[] }) {
                     <td className="mono">{row.id}</td>
                     <td>{row.name || '—'}</td>
                     <td className="mono">{row.date || '—'}</td>
-                    <td><span className="pill outline">{row.foundBy}</span></td>
+                    <td className="found">{row.foundBy}</td>
                     <td className="n">{row.score != null ? row.score.toFixed(2) : '—'}</td>
                     <td><span className="pill ok">Linked</span></td>
                   </tr>
@@ -445,6 +445,103 @@ function Records({ rows, pending }: { rows: Row[]; pending: ReviewCase[] }) {
   );
 }
 
+const SOURCE_ICON: Record<string, TimelineIcon> = {
+  legacy_master: 'users',
+  nppes: 'shield',
+  crm: 'user',
+  claims: 'doc',
+  events: 'cal',
+  payments: 'dollar',
+  hub: 'list',
+  notes: 'note',
+};
+
+type TimelineIcon = 'users' | 'user' | 'doc' | 'cal' | 'dollar' | 'list' | 'note' | 'shield' | 'spark' | 'edit';
+
+function TimelineGlyph({ name }: { name: TimelineIcon }) {
+  const common = { viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 2, 'aria-hidden': true as const };
+  if (name === 'users') {
+    return (
+      <svg {...common}>
+        <circle cx="9" cy="8" r="3.5" />
+        <path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18 14c2 .7 3.5 2.9 3.5 6" />
+      </svg>
+    );
+  }
+  if (name === 'user') {
+    return (
+      <svg {...common}>
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21a8 8 0 0 1 16 0" />
+      </svg>
+    );
+  }
+  if (name === 'doc') {
+    return (
+      <svg {...common}>
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+        <path d="M14 3v6h6" />
+      </svg>
+    );
+  }
+  if (name === 'cal') {
+    return (
+      <svg {...common}>
+        <rect x="3" y="5" width="18" height="16" rx="2" />
+        <path d="M3 10h18M8 3v4M16 3v4" />
+      </svg>
+    );
+  }
+  if (name === 'dollar') {
+    return (
+      <svg {...common}>
+        <path d="M12 2v20M17 6.5C16 5 14.3 4.5 12 4.5c-2.8 0-4.5 1.3-4.5 3.3 0 4.5 9.5 2.3 9.5 7 0 2.1-1.9 3.6-5 3.6-2.4 0-4.2-.7-5.2-2.2" />
+      </svg>
+    );
+  }
+  if (name === 'list') {
+    return (
+      <svg {...common}>
+        <rect x="4" y="3" width="16" height="18" rx="2" />
+        <path d="M8 8h8M8 12h8M8 16h5" />
+      </svg>
+    );
+  }
+  if (name === 'note') {
+    return (
+      <svg {...common}>
+        <path d="M4 4h16v12H8l-4 4z" />
+      </svg>
+    );
+  }
+  if (name === 'shield') {
+    return (
+      <svg {...common}>
+        <path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" />
+      </svg>
+    );
+  }
+  if (name === 'spark') {
+    return (
+      <svg {...common}>
+        <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />
+      </svg>
+    );
+  }
+  return (
+    <svg {...common}>
+      <path d="M4 20h4L19 9l-4-4L4 16z" />
+    </svg>
+  );
+}
+
+function eventMark(event: HistoryEvent): { icon: TimelineIcon; color: string } {
+  if (event.event_type === 'golden_record_formed') return { icon: 'spark', color: 'var(--accent)' };
+  const source = (event.source_type || '').toLowerCase();
+  if (SOURCE_ICON[source]) return { icon: SOURCE_ICON[source], color: SOURCE_COLOR[source] };
+  return { icon: 'edit', color: 'var(--new)' };
+}
+
 function Timeline({ rows, events }: { rows: Row[]; events: HistoryEvent[] }) {
   const items = [
     ...rows.filter((row) => row.date).map((row) => ({
@@ -453,14 +550,21 @@ function Timeline({ rows, events }: { rows: Row[]; events: HistoryEvent[] }) {
       sub: `${row.name ? `${row.name} · ` : ''}${row.foundBy}${row.score != null ? ` (${row.score.toFixed(2)})` : ''}`,
       pending: row.pending,
       href: row.pending ? `/review?case=${encodeURIComponent(row.id)}` : undefined,
+      icon: SOURCE_ICON[row.sourceKey] || 'doc',
+      color: SOURCE_COLOR[row.sourceKey] || 'var(--accent)',
     })),
-    ...events.map((event) => ({
-      date: (event.document_date || event.recorded_at || '').slice(0, 10),
-      title: event.title,
-      sub: event.description || event.activity_label || '',
-      pending: false,
-      href: undefined as string | undefined,
-    })),
+    ...events.map((event) => {
+      const mark = eventMark(event);
+      return {
+        date: (event.document_date || event.recorded_at || '').slice(0, 10),
+        title: event.title,
+        sub: event.description || event.activity_label || '',
+        pending: false,
+        href: undefined as string | undefined,
+        icon: mark.icon,
+        color: mark.color,
+      };
+    }),
   ].filter((item) => item.date).sort((a, b) => b.date.localeCompare(a.date));
   if (!items.length) return <div className="empty"><b>No dated events</b><span>Linked records do not have event dates yet.</span></div>;
   return (
@@ -468,7 +572,11 @@ function Timeline({ rows, events }: { rows: Row[]; events: HistoryEvent[] }) {
       {items.map((item) => (
         <div key={`${item.date}-${item.title}`} className={`tl ${item.pending ? 'pending' : ''}`}>
           <span className="d">{item.date}</span>
-          <span className="rail"><span className="node" style={{ background: item.pending ? 'var(--warn)' : 'var(--accent)', color: '#fff' }} /></span>
+          <span className="rail">
+            <span className="node" style={{ background: item.color, color: '#fff' }}>
+              <TimelineGlyph name={item.icon} />
+            </span>
+          </span>
           <span className="body">
             <b>
               {item.href ? <Link className="link" to={item.href}>{item.title}</Link> : item.title}
@@ -520,7 +628,7 @@ function Lineage({ rows, doctor, practice }: { rows: Row[]; doctor: DoctorSummar
         ))}
         <button type="button" className="chip" onClick={() => setOpen(new Set(sources))}>Expand all</button>
         <button type="button" className="chip" onClick={() => setOpen(new Set())}>Collapse all</button>
-        <span className="muted" style={{ marginLeft: 'auto', fontSize: 12.5 }}>Click a source to expand</span>
+        <span className="muted" style={{ marginLeft: 'auto', fontSize: 13 }}>Click a source to expand</span>
       </div>
       {blocks.length ? (
         <LineageSvg blocks={blocks} decisions={decisions} doctor={doctor} practice={practice} onToggle={toggle} />

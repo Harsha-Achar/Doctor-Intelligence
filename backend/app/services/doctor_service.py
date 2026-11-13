@@ -48,6 +48,40 @@ class DoctorService:
                 ids.add(link["doctor_id"])
         return ids
 
+    def _master_fix_kinds(self) -> Dict[str, str]:
+        """Doctors whose master was merged, split, or added. Same rules as pipeline metrics."""
+        state = self.repo.state()
+        decisions = state.get("match_decisions") or []
+        groups: Dict[str, List[str]] = {}
+        splits: Set[str] = set()
+        for decision in decisions:
+            if decision.get("source_key") != "legacy_master":
+                continue
+            record_id = decision.get("record_id") or ""
+            if "#dup" in record_id:
+                continue
+            target = decision.get("target_id") or ""
+            if decision.get("split_applied") and target:
+                splits.add(target)
+            if decision.get("action") in {"AUTO_LINK", "PROVISIONAL"} and target:
+                groups.setdefault(target, []).append(record_id)
+        linked = set(groups)
+        kinds: Dict[str, str] = {}
+        for doctor_id, record_ids in groups.items():
+            if len(record_ids) > 1:
+                kinds[doctor_id] = "merged"
+        for doctor_id in splits:
+            kinds.setdefault(doctor_id, "split")
+        for doctor_id, doctor in (state.get("doctors") or {}).items():
+            if doctor_id in linked:
+                continue
+            if doctor.get("identity_status") == "reference" or doctor.get("npi_status") == "reference":
+                continue
+            if doctor.get("provisional") or not doctor.get("official_npi"):
+                continue
+            kinds.setdefault(doctor_id, "added")
+        return kinds
+
     def _pending_counts(self) -> Dict[str, int]:
         counts: Dict[str, int] = {}
         for review in self.repo.list_reviews():
@@ -85,6 +119,7 @@ class DoctorService:
 
         links_by_doctor = self._links_by_doctor()
         pending = self._pending_counts()
+        master_fixes = self._master_fix_kinds()
         source_doctor_ids = self._doctor_ids_for_source(source_id) if source_id else None
         affiliations = self.repo.list_affiliations()
         aff_by_doctor: Dict[str, List[Dict[str, Any]]] = {}
@@ -159,6 +194,7 @@ class DoctorService:
                 "provisional": bool(doctor.get("provisional") or not doctor.get("official_npi")),
                 "former_name": former_name,
                 "is_new": bool(doctor.get("is_new")),
+                "master_fix": master_fixes.get(did),
             })
 
         allow = {

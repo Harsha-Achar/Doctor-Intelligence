@@ -45,7 +45,7 @@ input, select, textarea { font: inherit; color: var(--fg); }
   padding-block: 14px; padding-left: max(24px, env(safe-area-inset-left, 0px)); padding-right: max(24px, env(safe-area-inset-right, 0px));
   display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
 .top h1 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.01em; }
-.top .sub { font-size: 12.5px; color: var(--muted); }
+.top .sub { font-size: 13px; color: var(--muted); }
 .top .spacer { flex: 1; }
 .gsearch { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; min-width: 220px; }
 .gsearch input { border: 0; outline: 0; background: none; width: 100%; }
@@ -69,8 +69,8 @@ input, select, textarea { font: inherit; color: var(--fg); }
 /* cards */
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); box-shadow: var(--shadow); min-width: 0; }
 .card-h { display: flex; align-items: baseline; gap: 10px; padding: 16px 18px 0; flex-wrap: wrap; }
-.card-h h2, .card-h h3 { margin: 0; font-size: 15px; font-weight: 600; }
-.card-h .hint { font-size: 12.5px; color: var(--muted); }
+.card-h h2, .card-h h3 { margin: 0; font-size: 16px; font-weight: 600; }
+.card-h .hint { font-size: 13px; color: var(--muted); }
 .card-h .right { margin-left: auto; }
 .card-b { padding: 14px 18px 18px; }
 .grid { display: grid; gap: 16px; }
@@ -81,8 +81,8 @@ input, select, textarea { font: inherit; color: var(--fg); }
 .kpi:hover { border-color: var(--accent-line); transform: translateY(-1px); }
 .kpi .lbl { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .kpi .val { font-size: 30px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
-.kpi .val small { font-size: 15px; font-weight: 500; color: var(--muted); }
-.kpi .sub { font-size: 12.5px; color: var(--muted); }
+.kpi .val small { font-size: 14px; font-weight: 500; color: var(--muted); }
+.kpi .sub { font-size: 13px; color: var(--muted); }
 .kpi .delta { position: absolute; top: 14px; right: 14px; font-size: 11.5px; font-weight: 600; border-radius: 999px; padding: 2px 8px; background: var(--ok-bg); color: var(--ok); animation: pop .4s ease; }
 .kpi .delta.down { background: var(--accent-soft); color: var(--accent); }
 .kpi .bar { height: 5px; border-radius: 3px; background: var(--line); overflow: hidden; }
@@ -110,6 +110,22 @@ tr:last-child td { border-bottom: 0; }
 tr.click { cursor: pointer; }
 tr.click:hover td { background: #f5f8fd; }
 td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+table.recs { table-layout: fixed; }
+table.recs th:nth-child(1), table.recs td:nth-child(1) { width: 118px; }
+table.recs th:nth-child(2), table.recs td:nth-child(2) { width: 20%; }
+table.recs th:nth-child(3), table.recs td:nth-child(3) { width: 112px; }
+table.recs th:nth-child(5), table.recs td:nth-child(5) { width: 76px; }
+table.recs th:nth-child(6), table.recs td:nth-child(6) { width: 104px; }
+table.recs td { overflow-wrap: anywhere; }
+table.recs td.found {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+  word-break: normal;
+  vertical-align: middle;
+}
 .cellbtn { background: none; border: 0; padding: 2px 6px; border-radius: 6px; font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 600; }
 .cellbtn:hover { background: var(--accent-soft); }
 .cellbtn.zero { color: var(--faint); font-weight: 400; pointer-events: none; }
@@ -304,6 +320,10 @@ button.li:hover { background: #f7f9fd; }
 
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100%); background: var(--surface); z-index: 60; box-shadow: -20px 0 50px rgba(15,27,45,.2); display: flex; flex-direction: column; animation: slidein .25s ease; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
 .drawer.wide { width: min(900px, 100%); }
+.drawer.xwide { width: 50vw; max-width: 100%; }
+.drawer.xwide .drawer-b { min-width: 0; overflow-x: hidden; }
+.drawer.xwide .tw { max-width: 100%; max-height: calc(100vh - 140px); overflow: auto; }
+.drawer.xwide .tw table { width: max-content; min-width: 880px; }
 @keyframes slidein { from { transform: translateX(40px); opacity: 0; } }
 .drawer-h { display: flex; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
 .drawer-h h2 { margin: 0; font-size: 16px; }

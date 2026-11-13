@@ -11,7 +11,27 @@ import { Skeleton } from '../components/Skeleton';
 import { useShell } from '../layouts/shell';
 import { UploadMatchPage } from './UploadMatchPage';
 
-type StoryItem = FlowItem & { npi_status?: string; action?: string };
+type StoryItem = FlowItem & {
+  npi_status?: string;
+  action?: string;
+  name_as_written?: string;
+  npi_label?: string;
+  npi_tone?: string;
+  outcome_label?: string;
+  outcome_tone?: string;
+  doctor_name?: string;
+  proposed?: boolean;
+  stated_npi?: string;
+  specialty?: string;
+  practice?: string;
+  location?: string;
+  record_date?: string;
+  detail?: string;
+  reason?: string;
+  method?: string;
+  waiting?: boolean;
+  review_id?: string;
+};
 type SourceCell = { count: number; items?: StoryItem[] };
 type SourceRow = {
   source: string;
@@ -22,6 +42,7 @@ type SourceRow = {
   compliance: SourceCell;
   unmatched: SourceCell;
   not_a_person: SourceCell;
+  changes?: SourceCell;
 };
 type Cards = {
   doctors?: number;
@@ -81,7 +102,8 @@ export function OverviewPage() {
   const [runId, setRunId] = useState<string | null>(null);
   const [minimized, setMinimized] = useState(false);
   const [deltas, setDeltas] = useState<Record<string, number>>({});
-  const [records, setRecords] = useState<{ title: string; items: StoryItem[] } | null>(null);
+  const [records, setRecords] = useState<{ title: string; items: StoryItem[]; kind?: 'npi' | 'claim' } | null>(null);
+  const [claim, setClaim] = useState<StoryItem | null>(null);
   const [uploadOpen, setUploadOpen] = useState(params.get('upload') === '1');
   const [uploadMode, setUploadMode] = useState<'historical' | 'new'>('new');
   const [pairsOpen, setPairsOpen] = useState(false);
@@ -140,8 +162,21 @@ export function OverviewPage() {
     setDeltas(next);
   }, [data?.snapshot_version, cards]);
 
-  function openItems(title: string, items: StoryItem[] | undefined) {
-    setRecords({ title, items: items || [] });
+  function openItems(title: string, items: StoryItem[] | undefined, kind?: 'npi' | 'claim') {
+    setClaim(null);
+    setRecords({ title, items: items || [], kind });
+  }
+
+  function openRecord(item: StoryItem) {
+    if (item.review_id) {
+      navigate(`/review?case=${encodeURIComponent(item.review_id)}`);
+      return;
+    }
+    if (item.href) navigate(item.href);
+  }
+
+  function blank(value?: string) {
+    return value ? value : <i className="faint">not on record</i>;
   }
 
   if (summaryQuery.isLoading) {
@@ -243,7 +278,7 @@ export function OverviewPage() {
               </div>
               <span className="sub">{cards?.provisional} provisional: no NPI on the golden record</span>
             </button>
-            <button type="button" className="kpi" onClick={() => openItems('NPI issues found', story.conflicts?.npi_conflicts)}>
+            <button type="button" className="kpi" onClick={() => setRecords({ title: 'NPI issues found', items: story.conflicts?.npi_conflicts || [], kind: 'npi' })}>
               {deltas.issues ? <span className="delta">{deltas.issues}</span> : null}
               <span className="lbl">NPI issues found</span>
               <span className="val">{cards?.npi_issue_total || 0}</span>
@@ -257,7 +292,7 @@ export function OverviewPage() {
               <span className="val">{money(cards?.payments_at_risk?.amount || 0)}</span>
               <span className="sub">{cards?.payments_at_risk?.count || 0} payments need a compliance decision</span>
             </button>
-            <button type="button" className="kpi" onClick={() => navigate('/doctors')}>
+            <button type="button" className="kpi" onClick={() => navigate('/doctors?chip=fixed')}>
               <span className="lbl">Master records fixed</span>
               <span className="val">{cards?.masters_fixed?.total || 0}</span>
               <span className="sub">
@@ -290,7 +325,7 @@ export function OverviewPage() {
                   <b>{money(impact.payment_amount || 0)}</b>
                   <p>in {impact.payment_count || 0} payments would have been reported against the wrong doctor or without a valid NPI.</p>
                 </button>
-                <button type="button" className="tile" onClick={() => openItems('Claims with a problem NPI', impact.claims_items)}>
+                <button type="button" className="tile" onClick={() => { setClaim(null); setRecords({ title: 'Claims with a problem NPI', items: impact.claims_items || [], kind: 'claim' }); }}>
                   <span className="k" style={{ color: 'var(--warn)' }}>Prescriber credit</span>
                   <b>{impact.claims_problem || 0} claims</b>
                   <p>
@@ -321,6 +356,7 @@ export function OverviewPage() {
                       <th className="n">Identity</th>
                       <th className="n">Compliance</th>
                       <th className="n">Unmatched</th>
+                      <th className="n">Changes</th>
                       <th className="n">Not a person</th>
                     </tr>
                   </thead>
@@ -331,7 +367,7 @@ export function OverviewPage() {
                           <button
                             type="button"
                             className={`cellbtn ${cellData.count ? '' : 'zero'}`}
-                            onClick={() => cellData.count && openItems(`${sourceLabel(row.source)} · ${label}`, cellData.items)}
+                            onClick={() => cellData.count && openItems(`${sourceLabel(row.source)} · ${label}`, cellData.items, 'npi')}
                           >
                             {cellData.count}
                           </button>
@@ -342,11 +378,12 @@ export function OverviewPage() {
                           <td>
                             <b>{sourceLabel(row.source)}</b>
                           </td>
-                          {cell('all', { count: row.total, items: row.items })}
+                          {cell('all records', { count: row.total, items: row.items })}
                           {cell('linked', row.linked)}
                           {cell('identity', row.review)}
                           {cell('compliance', row.compliance)}
                           {cell('unmatched', row.unmatched)}
+                          {cell('proposed', row.changes || { count: 0 })}
                           {cell('not a person', row.not_a_person)}
                         </tr>
                       );
@@ -448,46 +485,144 @@ export function OverviewPage() {
 
       {records ? (
         <>
-          <div className="dscrim" onClick={() => setRecords(null)} />
-          <aside className="drawer wide" role="dialog" aria-modal="true" aria-label={records.title}>
+          <div className="dscrim" onClick={() => { setRecords(null); setClaim(null); }} />
+          <aside className={`drawer ${records.kind === 'npi' || records.kind === 'claim' ? 'xwide' : 'wide'}`} role="dialog" aria-modal="true" aria-label={claim ? `${sourceLabel(claim.source || '')} ${claim.record_id}` : records.title}>
             <div className="drawer-h">
-              <h2>{records.title}</h2>
-              <button type="button" className="iconbtn x" aria-label="Close" onClick={() => setRecords(null)}>
+              {claim ? (
+                <button type="button" className="btn sm" onClick={() => setClaim(null)}>
+                  Back
+                </button>
+              ) : null}
+              <h2>{claim ? `${sourceLabel(claim.source || '')} · ${claim.record_id}` : records.title}</h2>
+              <button type="button" className="iconbtn x" aria-label="Close" onClick={() => { setRecords(null); setClaim(null); }}>
                 ×
               </button>
             </div>
             <div className="drawer-b">
+              {claim ? (
+                <>
+                  <div className="chips">
+                    {claim.outcome_label ? <span className={`pill ${claim.outcome_tone || 'neu'}`}>{claim.outcome_label}</span> : null}
+                    {claim.npi_label ? <span className={`pill ${claim.npi_tone || 'neu'}`}>{claim.npi_label}</span> : null}
+                  </div>
+                  <div className="card">
+                    <div className="card-b">
+                      <dl className="kv">
+                        <dt>Name as written</dt>
+                        <dd>{claim.name_as_written || <i className="faint">blank</i>}</dd>
+                        <dt>Stated NPI</dt>
+                        <dd className="mono">{claim.stated_npi || <i className="faint">not on record</i>}</dd>
+                        <dt>Specialty</dt>
+                        <dd>{blank(claim.specialty)}</dd>
+                        <dt>Practice</dt>
+                        <dd>{blank(claim.practice)}</dd>
+                        <dt>Location</dt>
+                        <dd>{blank(claim.location)}</dd>
+                        <dt>Date</dt>
+                        <dd>{blank(claim.record_date)}</dd>
+                        <dt>Detail</dt>
+                        <dd>{blank(claim.detail)}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                  <div className="card">
+                    <div className="card-h">
+                      <h3>How it was resolved</h3>
+                    </div>
+                    <div className="card-b">
+                      <dl className="kv">
+                        <dt>Doctor</dt>
+                        <dd>{claim.waiting ? 'Waiting for a person' : claim.doctor_name || <span className="faint">—</span>}</dd>
+                        <dt>Method</dt>
+                        <dd>{claim.method || <span className="faint">—</span>}</dd>
+                        <dt>Reason</dt>
+                        <dd>{claim.reason || <span className="faint">—</span>}</dd>
+                      </dl>
+                    </div>
+                  </div>
+                  {claim.href ? (
+                    <button type="button" className="btn primary" onClick={() => openRecord(claim)}>
+                      {claim.review_id || claim.href.startsWith('/review') ? 'Open in Review' : 'Open doctor'}
+                    </button>
+                  ) : null}
+                </>
+              ) : (
+                <>
               <p className="muted" style={{ margin: 0 }}>
-                {records.items.length} records.
+                {records.items.length} records.{records.kind === 'npi' || records.kind === 'claim' ? ' Click a record to see its evidence.' : ''}
               </p>
               <div className="tw card">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Record</th>
-                      <th>Name</th>
-                      <th>Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {records.items.length === 0 ? (
+                {records.kind === 'npi' || records.kind === 'claim' ? (
+                  <table>
+                    <thead>
                       <tr>
-                        <td colSpan={3} className="muted">
-                          No records in this group.
-                        </td>
+                        <th>Record</th>
+                        <th>Source</th>
+                        <th>Name as written</th>
+                        <th>NPI status</th>
+                        <th>Outcome</th>
+                        <th>Doctor</th>
                       </tr>
-                    ) : (
-                      records.items.map((item) => (
-                        <tr key={`${item.record_id}-${item.href}`} className="click" onClick={() => item.href && navigate(item.href)}>
-                          <td className="mono">{item.record_id}</td>
-                          <td>{item.label}</td>
-                          <td>{item.amount ? money(item.amount) : ''}</td>
+                    </thead>
+                    <tbody>
+                      {records.items.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="muted">
+                            No records in this group.
+                          </td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        records.items.map((item) => (
+                          <tr
+                            key={`${item.record_id}-${item.href}`}
+                            className="click"
+                            onClick={() => (records.kind === 'claim' ? setClaim(item) : item.href && navigate(item.href))}
+                          >
+                            <td className="mono">{item.record_id}</td>
+                            <td>{sourceLabel(item.source || '')}</td>
+                            <td>{item.name_as_written || <i className="faint">blank</i>}</td>
+                            <td>{item.npi_label ? <span className={`pill ${item.npi_tone || 'neu'}`}>{item.npi_label}</span> : ''}</td>
+                            <td>{item.outcome_label ? <span className={`pill ${item.outcome_tone || 'neu'}`}>{item.outcome_label}</span> : ''}</td>
+                            <td>
+                              {item.doctor_name || <span className="faint">—</span>}
+                              {item.proposed ? <span className="muted"> (proposed)</span> : null}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                ) : (
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Record</th>
+                        <th>Name</th>
+                        <th>Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {records.items.length === 0 ? (
+                        <tr>
+                          <td colSpan={3} className="muted">
+                            No records in this group.
+                          </td>
+                        </tr>
+                      ) : (
+                        records.items.map((item) => (
+                          <tr key={`${item.record_id}-${item.href}`} className="click" onClick={() => item.href && navigate(item.href)}>
+                            <td className="mono">{item.record_id}</td>
+                            <td>{item.label}</td>
+                            <td>{item.amount ? money(item.amount) : ''}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                )}
               </div>
+                </>
+              )}
             </div>
           </aside>
         </>

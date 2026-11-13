@@ -33,6 +33,7 @@ class DoctorListItem(BaseModel):
     provisional: bool = False
     former_name: Optional[str] = None
     is_new: bool = False
+    master_fix: Optional[str] = None
 
 
 class DoctorSummary(BaseModel):

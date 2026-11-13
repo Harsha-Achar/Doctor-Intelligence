@@ -121,6 +121,7 @@ export interface DoctorListItem {
   provisional?: boolean;
   former_name?: string | null;
   is_new?: boolean;
+  master_fix?: 'merged' | 'split' | 'added' | null;
   credential?: string | null;
   license_states?: string[];
   source_count?: number;

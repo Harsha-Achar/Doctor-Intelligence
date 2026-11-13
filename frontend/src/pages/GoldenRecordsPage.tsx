@@ -11,6 +11,7 @@ import { useEffect } from 'react';
 
 const CHIPS = [
   ['all', 'All'],
+  ['fixed', 'Master fixed'],
   ['review', 'Needs review'],
   ['new', 'New evidence'],
   ['provisional', 'Provisional'],
@@ -18,6 +19,12 @@ const CHIPS = [
   ['incomplete', 'Incomplete'],
   ['changed', 'Changed recently'],
 ] as const;
+
+const FIX_LABEL: Record<string, string> = {
+  merged: 'Duplicates merged',
+  split: 'Blended record split',
+  added: 'Missing doctor added',
+};
 
 function statusPill(row: DoctorListItem) {
   const status = `${row.npi_status || ''} ${row.badge || ''}`.toLowerCase();
@@ -71,6 +78,7 @@ export function GoldenRecordsPage() {
     if (id === 'same') return (sameNames.get(naiveName(row)) || 0) > 1;
     if (id === 'incomplete') return (row.completeness || 0) < 100;
     if (id === 'changed') return Boolean(row.is_new);
+    if (id === 'fixed') return Boolean(row.master_fix);
     return true;
   };
   const rows = items.filter((row) => matches(row, chip as (typeof CHIPS)[number][0]));
@@ -139,6 +147,7 @@ export function GoldenRecordsPage() {
                         <b>{row.preferred_name}</b>
                         {row.is_new ? <span className="newdot" title="New" /> : null}
                         {row.former_name ? <div className="faint" style={{ fontSize: 12 }}>formerly {row.former_name}</div> : null}
+                        {row.master_fix ? <div className="faint" style={{ fontSize: 12 }}>{FIX_LABEL[row.master_fix] || row.master_fix}</div> : null}
                       </td>
                       <td className="mono">{row.official_npi || <span className="faint">none</span>}</td>
                       <td>{statusPill(row)}</td>

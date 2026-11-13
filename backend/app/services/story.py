@@ -185,7 +185,69 @@ def _resolution_flow(
     }
 
 
-def _item(decision: Dict[str, Any], record: Dict[str, Any], reviews_by_uid: Dict[str, str]) -> Dict[str, Any]:
+_NPI_PILL = {
+    "INVALID": ("Invalid", "bad"),
+    "PLACEHOLDER": ("Placeholder", "warn"),
+    "GROUP_NPI": ("Organization NPI", "bad"),
+    "DEACTIVATED": ("Deactivated", "warn"),
+    "MISMATCH": ("Suspected mismatch", "bad"),
+    "REVIEW": ("Not in registry", "bad"),
+    "VERIFIED": ("Verified", "ok"),
+    "VERIFIED_AFTER_CLEANING": ("Verified", "ok"),
+    "MISSING": ("Missing", "neu"),
+}
+_OPEN_ACTIONS = {"REVIEW", "COMPLIANCE_REVIEW", "DEDUPE_REVIEW", "ASSIGN_NPI"}
+_OUTCOME_PILL = {
+    "AUTO_LINK": ("Linked", "ok"),
+    "PROVISIONAL": ("Linked", "ok"),
+    "REVIEW": ("Identity", "warn"),
+    "DEDUPE_REVIEW": ("Identity", "warn"),
+    "ASSIGN_NPI": ("Identity", "warn"),
+    "COMPLIANCE_REVIEW": ("Compliance", "bad"),
+    "UNMATCHED": ("Unmatched", "neu"),
+    "NOT_A_PERSON": ("Not a person", "neu"),
+    "ORGANIZATION": ("Not a person", "neu"),
+    "DEDUPE": ("Duplicate", "neu"),
+}
+NPI_ISSUE_STATUSES = WRONG_NPI | {"REVIEW"}
+
+
+def _as_written(value: str) -> str:
+    text = value.strip()
+    if text and text == text.upper():
+        return text.title()
+    return text
+
+
+def _written_name(decision: Dict[str, Any], record: Dict[str, Any]) -> str:
+    std = (record or {}).get("standardized") or {}
+    name = std.get("name") if isinstance(std.get("name"), dict) else {}
+    raw = str(name.get("raw") or "").strip()
+    if raw:
+        return _as_written(raw)
+    recorded = str((record or {}).get("recorded_name") or "").strip()
+    if recorded:
+        return _as_written(recorded)
+    return _as_written(str(decision.get("display_name") or ""))
+
+
+def _claim_detail(record: Dict[str, Any]) -> str:
+    raw = (record or {}).get("raw") or {}
+    claim_type = str(raw.get("claim_type") or "").strip()
+    product = str(raw.get("product_code") or "").strip()
+    if not claim_type and not product:
+        return ""
+    kind = f"{claim_type.title()} claim" if claim_type else "Claim"
+    return " · ".join(part for part in [kind, product] if part)
+
+
+def _item(
+    decision: Dict[str, Any],
+    record: Dict[str, Any],
+    reviews_by_uid: Dict[str, str],
+    doctor: Optional[Dict[str, Any]] = None,
+    practice_name: str = "",
+) -> Dict[str, Any]:
     uid = decision.get("uid") or ""
     review_id = reviews_by_uid.get(uid)
     target = decision.get("target_id") or ""
@@ -196,12 +258,57 @@ def _item(decision: Dict[str, Any], record: Dict[str, Any], reviews_by_uid: Dict
     else:
         href = "/review"
     amount = _money((record or {}).get("amount_cents"))
+    action = str(decision.get("action") or "")
+    status = str(decision.get("npi_status") or "")
+    npi_label, npi_tone = _NPI_PILL.get(status, (status.replace("_", " ").title() or "Unknown", "neu"))
+    outcome_label, outcome_tone = _OUTCOME_PILL.get(action, (action.replace("_", " ").title() or "Open", "neu"))
+    doctor_name = str(decision.get("target_label") or (doctor or {}).get("preferred_name") or "").strip()
+    std = (record or {}).get("standardized") or {}
+    raw = (record or {}).get("raw") or {}
+    waiting = action in _OPEN_ACTIONS
+    route = str(decision.get("route") or "").replace("_", " ").strip()
+    stated_npi = str(decision.get("stated_npi") or "").strip()
+    if not stated_npi:
+        stated_npi = str(
+            raw.get("prescriber_npi")
+            or raw.get("recipient_npi")
+            or raw.get("npi")
+            or raw.get("NPI_vod")
+            or (record or {}).get("provider_identifier")
+            or ""
+        ).strip()
+    if not stated_npi:
+        for field in (record or {}).get("npi_lookups") or (record or {}).get("npi_fields") or []:
+            stated_npi = str(field.get("npi") or field.get("digits") or field.get("raw") or "").strip()
+            if stated_npi:
+                break
+    specialty = str(std.get("specialty_label") or std.get("specialty") or (doctor or {}).get("specialty") or "").strip()
+    practice = str(std.get("organization") or practice_name or "").strip()
+    location = ", ".join(part for part in [std.get("city") or (doctor or {}).get("city"), std.get("state") or (doctor or {}).get("state")] if part)
+    record_date = str(std.get("record_date") or raw.get("service_date") or raw.get("payment_date") or "").strip()
     return {
         "record_id": decision.get("record_id") or (record or {}).get("original_transaction_id") or uid,
         "uid": uid,
-        "label": decision.get("target_label") or decision.get("display_name") or decision.get("record_id"),
-        "action": decision.get("action"),
-        "npi_status": decision.get("npi_status"),
+        "label": doctor_name or decision.get("display_name") or decision.get("record_id"),
+        "name_as_written": _written_name(decision, record),
+        "action": action,
+        "npi_status": status,
+        "npi_label": npi_label,
+        "npi_tone": npi_tone,
+        "outcome_label": outcome_label,
+        "outcome_tone": outcome_tone,
+        "doctor_name": doctor_name,
+        "proposed": bool(doctor_name) and waiting,
+        "stated_npi": stated_npi,
+        "specialty": specialty,
+        "practice": practice,
+        "location": location,
+        "record_date": record_date,
+        "detail": _claim_detail(record),
+        "reason": str(decision.get("reason") or "").strip(),
+        "method": "" if waiting else (route.title() if route else "Automatic"),
+        "waiting": waiting,
+        "review_id": review_id or "",
         "amount": amount,
         "href": href,
         "source": decision.get("source_key") or (record or {}).get("source_id") or "",
@@ -239,6 +346,16 @@ def build_story(state: Dict[str, Any]) -> Dict[str, Any]:
     decisions: List[Dict[str, Any]] = list(state.get("match_decisions") or [])
     records = state.get("source_records") or {}
     doctors = list((state.get("doctors") or {}).values())
+    doctor_map = state.get("doctors") if isinstance(state.get("doctors"), dict) else {}
+    affiliations = state.get("affiliations") if isinstance(state.get("affiliations"), dict) else {}
+    practice_by_doctor: Dict[str, str] = {}
+    for affiliation in affiliations.values():
+        doctor_id = affiliation.get("doctor_id") or ""
+        name = str(affiliation.get("organization_name") or "").strip()
+        if not doctor_id or not name:
+            continue
+        if affiliation.get("is_primary") or doctor_id not in practice_by_doctor:
+            practice_by_doctor[doctor_id] = name
     reviews = list((state.get("reviews") or {}).values()) if isinstance(state.get("reviews"), dict) else list(state.get("reviews") or [])
     reviews_by_uid = {r.get("source_record_id"): r.get("review_id") for r in reviews if r.get("review_id")}
     metrics = state.get("pipeline_metrics") or {}
@@ -261,7 +378,18 @@ def build_story(state: Dict[str, Any]) -> Dict[str, Any]:
     unresolved = [d for d in decisions if d.get("action") in REVIEW | COMPLIANCE | {"UNMATCHED"}]
 
     def pack(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
-        items = [_item(d, record_for(d), reviews_by_uid) for d in rows]
+        items = []
+        for decision in rows:
+            target = decision.get("target_id") or ""
+            items.append(
+                _item(
+                    decision,
+                    record_for(decision),
+                    reviews_by_uid,
+                    doctor_map.get(target),
+                    practice_by_doctor.get(target, ""),
+                )
+            )
         return {
             "count": len(items),
             "amount": round(sum(item["amount"] for item in items), 2),
@@ -368,6 +496,26 @@ def build_story(state: Dict[str, Any]) -> Dict[str, Any]:
             chosen = [d for d in rows if d.get("action") in actions]
             return {"count": len(chosen), "items": pack(chosen)["items"]}
 
+        def change_items() -> Dict[str, Any]:
+            chosen = [d for d in rows if d.get("proposed_changes") or d.get("safety")]
+            items = []
+            for decision in chosen:
+                item = _item(
+                    decision,
+                    record_for(decision),
+                    reviews_by_uid,
+                    doctor_map.get(decision.get("target_id") or ""),
+                    practice_by_doctor.get(decision.get("target_id") or "", ""),
+                )
+                if decision.get("safety"):
+                    item["outcome_label"] = "Safety"
+                    item["outcome_tone"] = "bad"
+                else:
+                    item["outcome_label"] = "Proposed change"
+                    item["outcome_tone"] = "warn"
+                items.append(item)
+            return {"count": len(items), "items": items}
+
         by_source.append(
             {
                 "source": source,
@@ -378,13 +526,24 @@ def build_story(state: Dict[str, Any]) -> Dict[str, Any]:
                 "compliance": bucket(COMPLIANCE),
                 "unmatched": bucket({"UNMATCHED"}),
                 "not_a_person": bucket(NOT_PERSON),
+                "changes": change_items(),
             }
         )
 
     suspicious = metrics.get("suspicious") or []
     conflicts = {
         "same_name_pairs": same_name_pairs,
-        "npi_conflicts": pack([d for d in decisions if d.get("npi_status") == "MISMATCH"])["items"],
+        "npi_conflicts": [
+            _item(
+                d,
+                record_for(d),
+                reviews_by_uid,
+                doctor_map.get(d.get("target_id") or ""),
+                practice_by_doctor.get(d.get("target_id") or "", ""),
+            )
+            for d in decisions
+            if d.get("npi_status") in NPI_ISSUE_STATUSES
+        ],
         "suspicious": suspicious,
     }
 

@@ -616,6 +616,7 @@ def project_pipeline(result: Dict[str, Any]) -> Dict[str, Any]:
                 "found_by": d.get("found_by") or [],
                 "route": d.get("route") or "",
                 "learned_value": bool(d.get("learned_value")),
+                "split_applied": bool(d.get("split_applied")),
                 "search_plan": d.get("search_plan"),
                 "splink_score": d.get("splink_score"),
                 "splink_levels": d.get("splink_levels") or [],
