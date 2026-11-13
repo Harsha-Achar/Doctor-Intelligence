@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -46,13 +46,11 @@ class ProfileSummaryResult(BaseModel):
 
 
 class ReviewExplanationResult(BaseModel):
-    summary: str
-    why_review: str
-    support_for_candidates: List[str] = Field(default_factory=list)
-    contradictions: List[str] = Field(default_factory=list)
-    missing_information: List[str] = Field(default_factory=list)
-    supporting_evidence_ids: List[str] = Field(default_factory=list)
-    conflicting_evidence_ids: List[str] = Field(default_factory=list)
+    recommendation_type: Literal["approve_candidate", "hold", "needs_more_info", "reject"]
+    confidence: Literal["high", "medium", "low"]
+    confidence_reason: str = Field(min_length=1)
+    recommended_doctor_id: Optional[str] = None
+    sections: Dict[str, str]
     requires_human_review: bool = True
 
 

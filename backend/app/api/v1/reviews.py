@@ -31,6 +31,20 @@ def review_workspace(service: ReviewService = Depends(get_review_service)) -> Di
     return service.workspace()
 
 
+@router.post("/workspace-items/{item_id}/ai-reasoning", status_code=202, operation_id="createWorkspaceItemAiReasoning")
+async def create_workspace_item_reasoning(
+    item_id: str,
+    background: BackgroundTasks,
+    body: RefreshRequest | None = None,
+    service: AiService = Depends(get_ai_service),
+) -> Dict[str, Any]:
+    force = bool(body.force_refresh) if body else False
+    job = service.submit_workspace_reasoning(item_id, force_refresh=force)
+    if job.pop("should_run", False):
+        background.add_task(service.execute, job["job_id"])
+    return job
+
+
 @router.post("/board-decisions", operation_id="resolveReviewBoardItem")
 def resolve_board_item(
     body: Dict[str, Any],

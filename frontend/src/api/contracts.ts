@@ -458,4 +458,5 @@ export interface AiAnalysis {
   label?: string | null;
   cached?: boolean;
   served_from_cache?: boolean;
+  workspace_reasoning?: Record<string, unknown> | null;
 }

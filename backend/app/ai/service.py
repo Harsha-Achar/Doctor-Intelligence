@@ -9,7 +9,9 @@ from app.ai.context import (
     build_identity_pack,
     build_review_pack,
     build_summary_pack,
+    build_workspace_item_pack,
 )
+from app.ai.review_workspace import find_workspace_item, merge_llm_reasoning
 from app.ai.prompts import load_prompt
 from app.ai.provider import LlmClient, sanitize_error
 from app.ai.validate import parse_model_output
@@ -44,7 +46,26 @@ class AiService:
     def submit_explanation(self, review_id: str, *, force_refresh: bool) -> Dict[str, Any]:
         if not self.repo.get_review(review_id):
             raise NotFoundError(f"Review {review_id} not found")
-        return self._submit("review_explanation", review_id=review_id, force_refresh=force_refresh)
+        item = find_workspace_item(self.repo.state(), review_id=review_id)
+        return self._submit(
+            "review_explanation",
+            review_id=review_id,
+            workspace_item_id=item.get("id") if item else None,
+            force_refresh=force_refresh,
+        )
+
+    def submit_workspace_reasoning(self, item_id: str, *, force_refresh: bool) -> Dict[str, Any]:
+        item = find_workspace_item(self.repo.state(), item_id=item_id)
+        if not item:
+            raise NotFoundError(f"Workspace item {item_id} not found")
+        if not (item.get("candidates") or []):
+            raise ValidationAppError("This queue item has no match candidates for AI reasoning.")
+        return self._submit(
+            "review_explanation",
+            review_id=item.get("review_id"),
+            workspace_item_id=item_id,
+            force_refresh=force_refresh,
+        )
 
     def latest_summary(self, doctor_id: str) -> Dict[str, Any]:
         if not self.repo.get_doctor(doctor_id):
@@ -148,10 +169,11 @@ class AiService:
         record_ids: Optional[List[str]] = None,
         doctor_id: Optional[str] = None,
         review_id: Optional[str] = None,
+        workspace_item_id: Optional[str] = None,
         force_refresh: bool = False,
     ) -> Dict[str, Any]:
         self._ensure_configured()
-        pack = self._build(operation, record_ids or [], doctor_id, review_id)
+        pack = self._build(operation, record_ids or [], doctor_id, review_id, workspace_item_id)
         state = self.repo.state()
         if not force_refresh and not pack.narrowing:
             cached_id = (state.get("ai_cache") or {}).get(pack.fingerprint)
@@ -175,6 +197,7 @@ class AiService:
             "source_record_ids": pack.source_record_ids,
             "doctor_id": doctor_id,
             "review_id": review_id,
+            "workspace_item_id": workspace_item_id,
             "input_fingerprint": pack.fingerprint,
             "prompt_version": version,
             "prompt_digest": digest,
@@ -204,6 +227,7 @@ class AiService:
         record_ids: Sequence[str],
         doctor_id: Optional[str],
         review_id: Optional[str],
+        workspace_item_id: Optional[str] = None,
     ) -> EvidencePack:
         _version, digest, _system = load_prompt(operation)
         deployment = getattr(self.client, "deployment", "") or "unconfigured"
@@ -219,13 +243,31 @@ class AiService:
             )
         if operation == "profile_summary":
             return build_summary_pack(self.repo, doctor_id or "", prompt_digest=digest, deployment=deployment)
+        if workspace_item_id:
+            return build_workspace_item_pack(
+                self.repo,
+                workspace_item_id,
+                prompt_digest=digest,
+                deployment=deployment,
+                max_evidence=self.settings.ai_max_evidence,
+            )
         return build_review_pack(
-            self.repo, review_id or "", prompt_digest=digest, deployment=deployment,
+            self.repo,
+            review_id or "",
+            prompt_digest=digest,
+            deployment=deployment,
             max_evidence=self.settings.ai_max_evidence,
+            workspace_item_id=workspace_item_id,
         )
 
     def _pack_for_job(self, job: Dict[str, Any]) -> EvidencePack:
-        return self._build(job["operation"], job.get("source_record_ids") or [], job.get("doctor_id"), job.get("review_id"))
+        return self._build(
+            job["operation"],
+            job.get("source_record_ids") or [],
+            job.get("doctor_id"),
+            job.get("review_id"),
+            job.get("workspace_item_id"),
+        )
 
     def _ensure_configured(self) -> None:
         if self.settings.analysis_mode == "mock":
@@ -265,6 +307,7 @@ class AiService:
             "source_record_ids": pack.source_record_ids,
             "doctor_id": job.get("doctor_id"),
             "review_id": job.get("review_id"),
+            "workspace_item_id": job.get("workspace_item_id"),
             "input_fingerprint": pack.fingerprint,
             "prompt_version": prompt_version,
             "provider": job.get("provider"),
@@ -440,6 +483,7 @@ class AiService:
             "source_record_ids": job.get("source_record_ids") or [],
             "doctor_id": job.get("doctor_id"),
             "review_id": job.get("review_id") or (analysis or {}).get("review_id"),
+            "workspace_item_id": job.get("workspace_item_id"),
             "analysis_id": job.get("analysis_id"),
             "status_url": f"/api/v1/ai/jobs/{job['job_id']}",
             "requested_at": job.get("requested_at"),
@@ -453,12 +497,13 @@ class AiService:
     def _public_analysis(self, row: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
         if not row:
             return None
-        return {
+        payload = {
             "analysis_id": row.get("analysis_id"),
             "operation": row.get("operation"),
             "source_record_ids": row.get("source_record_ids") or [],
             "doctor_id": row.get("doctor_id"),
             "review_id": row.get("review_id"),
+            "workspace_item_id": row.get("workspace_item_id"),
             "prompt_version": row.get("prompt_version"),
             "provider": row.get("provider"),
             "deployment": row.get("deployment"),
@@ -475,6 +520,21 @@ class AiService:
             "cached": bool(row.get("served_from_cache")),
             "served_from_cache": bool(row.get("served_from_cache")),
         }
+        if row.get("operation") == "review_explanation" and isinstance(row.get("response"), dict):
+            ws_id = row.get("workspace_item_id")
+            item = None
+            if ws_id:
+                item = find_workspace_item(self.repo.state(), item_id=ws_id)
+            elif row.get("review_id"):
+                item = find_workspace_item(self.repo.state(), review_id=row.get("review_id"))
+            if item:
+                payload["workspace_reasoning"] = merge_llm_reasoning(
+                    item.get("reasoning") or {},
+                    row["response"],
+                    queue_type=str(item.get("queue_type") or "identity"),
+                    candidates=item.get("candidates") or [],
+                )
+        return payload
 
     def _require_ids(self, record_ids: Sequence[str], *, minimum: int) -> None:
         if len(record_ids) < minimum:

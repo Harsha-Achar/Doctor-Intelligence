@@ -74,16 +74,21 @@ export type ReviewCase = {
     grid?: Record<string, [string, string]>;
   }>;
   reasoning?: {
-    recommendation: string;
-    confidence: string;
-    agrees: string[];
-    partial: string[];
-    conflicts: string[];
-    why_not: string[];
-    extra: string[];
-    margin: number;
-    found_by: string;
-    score: number;
+    structured?: boolean;
+    valid?: boolean;
+    queue_type?: string;
+    recommendation_type?: 'approve_candidate' | 'hold' | 'needs_more_info' | 'reject';
+    recommendation_label?: string;
+    confidence?: string;
+    confidence_reason?: string;
+    recommended_doctor_id?: string | null;
+    blocking_summary?: string;
+    sections?: Array<{ key: string; heading: string; value: string }>;
+    source?: string;
+    recommendation?: string;
+    margin?: number;
+    found_by?: string;
+    score?: number;
   } | null;
 };
 

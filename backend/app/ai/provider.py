@@ -71,17 +71,71 @@ class MockLlmClient:
             }
         elif "Summarize this accepted doctor profile" in user:
             payload = _summary_from_user(user)
-        elif "Explain why this review case" in user:
-            payload = {
-                "summary": "The supplied source evidence does not settle the case by itself.",
-                "why_review": "A person needs to compare the cited source values.",
-                "support_for_candidates": [],
-                "contradictions": [],
-                "missing_information": ["Corroborating professional identifier"],
-                "supporting_evidence_ids": [],
-                "conflicting_evidence_ids": [],
-                "requires_human_review": True,
-            }
+        elif "Explain this review workspace match" in user or "Explain why this review case" in user:
+            import re as _re
+
+            queue_type = "identity"
+            qmatch = _re.search(r'"queue_type":\s*"([^"]+)"', user)
+            if qmatch:
+                queue_type = qmatch.group(1)
+            is_p3305 = "P-3305" in user or (
+                "1500605765" in user and "Harris" in user and '"queue_type": "compliance"' in user
+            )
+            if is_p3305:
+                payload = {
+                    "recommendation_type": "hold",
+                    "confidence": "low",
+                    "confidence_reason": "conflicting identifier",
+                    "recommended_doctor_id": None,
+                    "sections": {
+                        "recommendation": "Hold payment approval until the NPI field dispute is resolved.",
+                        "evidence": "The Name field matches William Harris Jr. The Practice field matches Harborlight Cancer Center.",
+                        "blocking_conflict": "The NPI field is conflicting for William Harris Jr versus William Harris Sr.",
+                        "alternate_candidate": "William Harris Sr scores lower because the Suffix field and Practice field disagree with the record.",
+                        "missing_evidence": "Not available",
+                        "reviewer_action": "Check NPI 1500605765 against the NPPES registry.",
+                    },
+                    "requires_human_review": True,
+                }
+            elif queue_type == "compliance":
+                top_id = None
+                id_match = _re.search(r'"doctor_id":\s*"([^"]+)"', user)
+                if id_match:
+                    top_id = id_match.group(1)
+                payload = {
+                    "recommendation_type": "approve_candidate",
+                    "confidence": "medium",
+                    "confidence_reason": "shared identifiers",
+                    "recommended_doctor_id": top_id,
+                    "sections": {
+                        "recommendation": "Approve as the top candidate after compliance review.",
+                        "evidence": "The Name field and Specialty field align with the leading candidate.",
+                        "blocking_conflict": "None",
+                        "alternate_candidate": "The alternate candidate is weaker on the Location field.",
+                        "missing_evidence": "None",
+                        "reviewer_action": "Only compliance reviewers can approve. Filed Open Payments values are never changed automatically.",
+                    },
+                    "requires_human_review": True,
+                }
+            else:
+                top_id = None
+                id_match = _re.search(r'"doctor_id":\s*"([^"]+)"', user)
+                if id_match:
+                    top_id = id_match.group(1)
+                payload = {
+                    "recommendation_type": "approve_candidate",
+                    "confidence": "medium",
+                    "confidence_reason": "field alignment",
+                    "recommended_doctor_id": top_id,
+                    "sections": {
+                        "match_decision": "Link to the top-ranked candidate when identifiers agree.",
+                        "score_drivers": "The Name field and Location field drive the score gap versus alternates.",
+                        "conflicting_fields": "None",
+                        "alternates_ruled_out": "Alternates disagree on key identifier fields.",
+                        "confirm_before_linking": "Confirm registry note on any NPI field flag before linking.",
+                    },
+                    "requires_human_review": True,
+                }
         elif "Extract proposed changes" in user:
             payload = {
                 "summary": "No change was copied because the mock provider does not invent values.",

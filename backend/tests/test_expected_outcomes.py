@@ -54,7 +54,8 @@ def test_record_actions():
     assert any("Lee-Kim" in label for label in cand_labels)
 
     assert by_id["CRM-9401"]["action"] == "REVIEW"
-    assert by_id["CRM-9401"]["stated_npi"] == "1576635514"
+    assert by_id["CRM-9401"]["stated_npi"] == "1567874528"
+    assert by_id["CRM-9401"]["display_name"] == "John Smith"
     assert by_id["CRM-9400"]["action"] == "REVIEW"
     assert by_id["CRM-9400"]["stated_npi"] == "1576635514"
     assert by_id["CLM-55102"]["action"] == "REVIEW"

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiFetch } from '../api/client';
+import { startWorkspaceItemReasoning } from '../api/ai';
 import {
   fetchReviewWorkspace,
   resolveBoardItem,
@@ -9,6 +10,14 @@ import {
   type ReviewCase,
 } from '../api/reviews';
 import { ErrorState } from '../components/ErrorState';
+import { useAiJob, jobStorageKey } from '../features/ai/useAiJob';
+import {
+  approveButtonDisabled,
+  holdApprovalHint,
+  needsMoreInfoPrimary,
+  primaryApproveDoctorId,
+} from '../features/reviews/reviewReasoning';
+import { ReviewReasoningPanel } from '../features/reviews/ReviewReasoningPanel';
 import { useShell } from '../layouts/shell';
 
 const FILTERS = [
@@ -124,6 +133,43 @@ export function ReviewsPage() {
   const counts = board.data?.counts || {};
   const visible = items.filter((item) => filter === 'all' || item.queue_type === filter);
   const selected = visible.find((item) => item.id === selectedId) || visible[0] || null;
+  const reasoningScope = selected?.id ? `review-reasoning:${selected.id}` : 'review-reasoning:none';
+  const aiReasoning = useAiJob(reasoningScope);
+
+  useEffect(() => {
+    if (!selected?.candidates?.length) {
+      aiReasoning.setJobId(null);
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.removeItem(jobStorageKey(reasoningScope));
+      }
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const job = await startWorkspaceItemReasoning(selected.id, true);
+        if (!cancelled) aiReasoning.setJobId(job.job_id);
+      } catch {
+        if (!cancelled) aiReasoning.setJobId(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selected?.id, selected?.candidates?.length]);
+
+  const llmReasoning = aiReasoning.job?.analysis?.workspace_reasoning as ReviewCase['reasoning'] | undefined;
+  const wantsLlm = !!(selected?.candidates?.length);
+  const llmComplete = wantsLlm && aiReasoning.job?.status === 'completed';
+  const reasoningBusy = !!(wantsLlm && (aiReasoning.busy || (!!aiReasoning.jobId && aiReasoning.job?.status !== 'completed' && aiReasoning.job?.status !== 'failed')));
+  const displayReasoning =
+    llmComplete && llmReasoning
+      ? llmReasoning
+      : wantsLlm && reasoningBusy
+        ? null
+        : !wantsLlm
+          ? selected?.reasoning ?? null
+          : null;
 
   useEffect(() => {
     if (!selected) return;
@@ -458,6 +504,9 @@ export function ReviewsPage() {
             {selected ? (
               <CaseDetail
                 item={selected}
+                reasoning={displayReasoning}
+                reasoningBusy={reasoningBusy}
+                reasoningFailed={!!(wantsLlm && (aiReasoning.job?.status === 'failed' || (llmComplete && !llmReasoning)))}
                 candidateId={candidateId}
                 onCandidate={setCandidateId}
                 previewDoctor={previewDoctor}
@@ -491,6 +540,9 @@ export function ReviewsPage() {
 
 function CaseDetail({
   item,
+  reasoning,
+  reasoningBusy,
+  reasoningFailed,
   candidateId,
   onCandidate,
   previewDoctor,
@@ -506,6 +558,9 @@ function CaseDetail({
   onSoft,
 }: {
   item: ReviewCase;
+  reasoning: ReviewCase['reasoning'];
+  reasoningBusy: boolean;
+  reasoningFailed: boolean;
   candidateId: string | null;
   onCandidate: (id: string) => void;
   previewDoctor: string | null;
@@ -626,8 +681,10 @@ function CaseDetail({
   }
 
   const candidates = item.candidates || [];
-  const reasoning = item.reasoning;
   const recommendedId = candidates.find((row) => row.recommended)?.doctor_id;
+  const aiRecommendedId = primaryApproveDoctorId(reasoning, recommendedId);
+  const holdHint = holdApprovalHint(reasoning, candidates);
+  const moreInfoPrimary = needsMoreInfoPrimary(reasoning);
   return (
     <>
       {head}
@@ -695,36 +752,21 @@ function CaseDetail({
           </div>
           <div className="card" id="reasonCard" data-tour="reasoning">
             <div className="card-b" style={{ display: 'grid', gap: 12 }}>
-              {reasoning ? (
-                <div className="reason">
-                  <h4>AI reasoning · recommendation only</h4>
-                  <p style={{ margin: 0 }}>
-                    <b>{reasoning.recommendation}</b>{' '}
-                    <span className={`pill ${reasoning.confidence === 'High' ? 'ok' : reasoning.confidence === 'Medium' ? 'warn' : 'neu'}`}>{reasoning.confidence} confidence</span>
-                  </p>
-                  {reasoning.extra.map((line) => <p key={line} style={{ margin: 0 }}>{line}</p>)}
-                  <ul>
-                    {reasoning.agrees.length ? <li><b>Agrees:</b> {reasoning.agrees.join('; ')}</li> : null}
-                    {reasoning.partial.length ? <li><b>Partly agrees:</b> {reasoning.partial.join('; ')}</li> : null}
-                    {reasoning.conflicts.length ? <li><b>Conflicts to check:</b> {reasoning.conflicts.join('; ')}</li> : null}
-                    {reasoning.why_not.length ? <li><b>Why not the others:</b> {reasoning.why_not.join(' · ')}</li> : null}
-                  </ul>
-                  <details className="how">
-                    <summary>Score breakdown and how this was found</summary>
-                    <p style={{ margin: '6px 0 0' }}>
-                      Found by: {reasoning.found_by}. Margin over next candidate: {reasoning.margin.toFixed(2)}. Model: Splink. Evidence cited: {item.record_id}
-                      {candidates.map((row) => row.doctor_id).filter(Boolean).join(', ') ? `, ${candidates.map((row) => row.name).join(', ')}` : ''}.
-                    </p>
-                  </details>
-                </div>
-              ) : null}
+              <ReviewReasoningPanel
+                queueType={item.queue_type}
+                reasoning={reasoning}
+                candidates={candidates}
+                busy={reasoningBusy}
+                failed={reasoningFailed}
+              />
+              {holdHint ? <p className="muted" style={{ margin: 0, fontSize: 13 }}>{holdHint}</p> : null}
               <div className="chips">
                 {candidates.map((candidate) => (
                   <button
                     key={candidate.doctor_id}
                     type="button"
-                    className={`btn ${candidate.doctor_id === recommendedId ? 'primary' : ''}`}
-                    disabled={busy || item.link_blocked || !item.review_id}
+                    className={`btn ${candidate.doctor_id === aiRecommendedId ? 'primary' : ''}`}
+                    disabled={busy || approveButtonDisabled(reasoning, item, candidate.doctor_id)}
                     title={item.link_blocked ? 'A hard stop blocks linking this record' : undefined}
                     onClick={() => candidate.doctor_id && onPreview(candidate.doctor_id)}
                   >
@@ -732,7 +774,7 @@ function CaseDetail({
                   </button>
                 ))}
                 <button type="button" className="btn" disabled={busy} onClick={() => onBoard(item.review_id ? 'leave_unresolved' : 'leave_unmatched', 'No candidate fits', !item.review_id)}>None of these</button>
-                <button type="button" className="btn" onClick={() => onSoft(`Requested more information for ${item.record_id}`)}>Need more information</button>
+                <button type="button" className={`btn${moreInfoPrimary ? ' primary' : ''}`} onClick={() => onSoft(`Requested more information for ${item.record_id}`)}>Need more information</button>
                 <button type="button" className="btn ghost" onClick={() => onSoft(`${item.record_id} deferred`)}>Defer</button>
               </div>
               {item.link_blocked ? <p className="muted" style={{ margin: 0 }}>A hard stop blocks a link. Leave the record unmatched or defer it.</p> : null}
@@ -748,7 +790,7 @@ function CaseDetail({
                     {item.queue_type === 'compliance' ? <li>A correction is logged for compliance. The filed Open Payments value is not changed automatically.</li> : <li>The source file is not changed.</li>}
                     <li>The AI summary is regenerated.</li>
                   </ul>
-                  {previewDoctor !== recommendedId ? (
+                  {previewDoctor !== aiRecommendedId ? (
                     <label style={{ display: 'grid', gap: 6 }}>
                       <span className="muted">This is not the recommended doctor. Reason (required)</span>
                       <textarea id="why" rows={2} value={reason} onChange={(event) => onReason(event.target.value)} style={{ border: `1px solid ${reasonError ? 'var(--bad)' : 'var(--line-2)'}`, borderRadius: 8, padding: '8px 10px' }} placeholder="e.g. confirmed by attendance list" />

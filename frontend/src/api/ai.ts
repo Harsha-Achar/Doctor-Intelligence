@@ -33,6 +33,13 @@ export function startReviewExplanation(reviewId: string, forceRefresh = false) {
   });
 }
 
+export function startWorkspaceItemReasoning(itemId: string, forceRefresh = false) {
+  return apiFetch<AiJob>(`/reviews/workspace-items/${encodeURIComponent(itemId)}/ai-reasoning`, {
+    method: 'POST',
+    body: JSON.stringify({ force_refresh: forceRefresh }),
+  });
+}
+
 export function fetchAiJob(jobId: string, signal?: AbortSignal) {
   return apiFetch<AiJob>(`/ai/jobs/${jobId}`, { signal });
 }

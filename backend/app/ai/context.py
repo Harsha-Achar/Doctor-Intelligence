@@ -242,12 +242,25 @@ def build_review_pack(
     prompt_digest: str,
     deployment: str,
     max_evidence: int,
+    workspace_item_id: Optional[str] = None,
 ) -> EvidencePack:
-    review = repo.get_review(review_id)
-    if not review:
+    from app.ai.review_workspace import find_workspace_item, match_decision_for_item, workspace_match_payload
+
+    state = repo.state()
+    item = find_workspace_item(state, review_id=review_id, item_id=workspace_item_id)
+    review = repo.get_review(review_id) if review_id else None
+    if not review and not item:
         from app.core.exceptions import NotFoundError
         raise NotFoundError(f"Review {review_id} not found")
-    record_ids = [review["source_record_id"]] if review.get("source_record_id") else []
+    if not item and review_id:
+        item = find_workspace_item(state, review_id=review_id)
+    if not review and item and item.get("review_id"):
+        review = repo.get_review(item["review_id"])
+    record_ids = []
+    if review and review.get("source_record_id"):
+        record_ids = [review["source_record_id"]]
+    elif item and item.get("record_uid"):
+        record_ids = [item["record_uid"]]
     records = _require_records(repo, record_ids) if record_ids else []
     evidence = _evidence_for(repo, record_ids)
     if len(evidence) > max_evidence:
@@ -259,39 +272,115 @@ def build_review_pack(
             prompt_digest=prompt_digest,
             deployment=deployment,
         )
-    candidates = []
-    for candidate in repo.list_candidates(review_id):
-        doctor = repo.get_doctor(candidate.get("candidate_doctor_id") or "")
-        if not doctor:
-            continue
-        candidates.append({
-            "doctor_id": doctor.get("doctor_id"),
-            "preferred_name": doctor.get("preferred_name"),
-            "specialty": doctor.get("specialty"),
-            "city": doctor.get("city"),
-            "state": doctor.get("state"),
-        })
-    if review.get("doctor_id"):
-        doctor = repo.get_doctor(review["doctor_id"])
-        if doctor and all(c["doctor_id"] != doctor["doctor_id"] for c in candidates):
-            candidates.append({
-                "doctor_id": doctor.get("doctor_id"),
-                "preferred_name": doctor.get("preferred_name"),
-                "specialty": doctor.get("specialty"),
-                "city": doctor.get("city"),
-                "state": doctor.get("state"),
-            })
+    decision = match_decision_for_item(state, item) if item else None
+    match_block = workspace_match_payload(item, decision) if item else {}
+    contributions = []
+    rid = review_id or (item or {}).get("review_id") or ""
+    for candidate in repo.list_candidates(rid):
+        contributions.append(
+            {
+                "candidate_doctor_id": candidate.get("candidate_doctor_id"),
+                "rank": candidate.get("rank"),
+                "rationale": candidate.get("rationale"),
+                "contributions": candidate.get("contributions") or [],
+                "hard_stops": candidate.get("hard_stops") or [],
+            }
+        )
     constraints = _constraints_for_records(repo, set(record_ids))
-    payload = {
-        "task": "Explain why this review case needs a human decision.",
-        "case_type": review.get("case_type"),
+    payload: Dict[str, Any] = {
+        "task": "Explain this review workspace match for a steward.",
+        "case_type": (review or {}).get("case_type") or (item or {}).get("case_type"),
         "records": [_public_record(r) for r in records],
-        "candidate_profiles_on_file": candidates,
+        "match_review": match_block,
+        "candidate_contributions": contributions,
         "evidence": [_public_evidence(e) for e in evidence],
         "document_passages": _passages(repo, evidence),
         "verified_constraints": constraints,
     }
-    pack = _pack("review_explanation", payload, evidence, records, prompt_digest, deployment)
+    if decision:
+        payload["pipeline_decision"] = {
+            "action": decision.get("action"),
+            "reason": decision.get("reason"),
+            "hard_stops": decision.get("hard_stops") or [],
+        }
+    pack = _pack(
+        "review_explanation",
+        payload,
+        evidence,
+        records,
+        prompt_digest,
+        deployment,
+        doctor_revision=f"ws:{(item or {}).get('id')}:{(item or {}).get('version')}",
+    )
+    pack.source_record_ids = record_ids
+    return pack
+
+
+def build_workspace_item_pack(
+    repo: Any,
+    item_id: str,
+    *,
+    prompt_digest: str,
+    deployment: str,
+    max_evidence: int,
+) -> EvidencePack:
+    from app.ai.review_workspace import find_workspace_item
+
+    state = repo.state()
+    item = find_workspace_item(state, item_id=item_id)
+    if not item:
+        from app.core.exceptions import NotFoundError
+        raise NotFoundError(f"Workspace item {item_id} not found")
+    review_id = item.get("review_id") or (item["id"] if str(item.get("id", "")).startswith("REV-") else None)
+    if review_id:
+        return build_review_pack(
+            repo,
+            review_id,
+            prompt_digest=prompt_digest,
+            deployment=deployment,
+            max_evidence=max_evidence,
+            workspace_item_id=item_id,
+        )
+    from app.ai.review_workspace import match_decision_for_item, workspace_match_payload
+
+    uid = item.get("record_uid")
+    record_ids = [uid] if uid else []
+    records = _require_records(repo, record_ids) if record_ids else []
+    evidence = _evidence_for(repo, record_ids)
+    if len(evidence) > max_evidence:
+        return _narrowing(
+            "review_explanation",
+            records,
+            reason="This review cites more evidence than the analysis limit. Narrow the cited records.",
+            groups=[],
+            prompt_digest=prompt_digest,
+            deployment=deployment,
+        )
+    decision = match_decision_for_item(state, item)
+    payload: Dict[str, Any] = {
+        "task": "Explain this review workspace match for a steward.",
+        "case_type": item.get("case_type"),
+        "records": [_public_record(r) for r in records],
+        "match_review": workspace_match_payload(item, decision),
+        "evidence": [_public_evidence(e) for e in evidence],
+        "document_passages": _passages(repo, evidence),
+        "verified_constraints": _constraints_for_records(repo, set(record_ids)),
+    }
+    if decision:
+        payload["pipeline_decision"] = {
+            "action": decision.get("action"),
+            "reason": decision.get("reason"),
+            "hard_stops": decision.get("hard_stops") or [],
+        }
+    pack = _pack(
+        "review_explanation",
+        payload,
+        evidence,
+        records,
+        prompt_digest,
+        deployment,
+        doctor_revision=f"ws:{item_id}:{item.get('version')}",
+    )
     pack.source_record_ids = record_ids
     return pack
 

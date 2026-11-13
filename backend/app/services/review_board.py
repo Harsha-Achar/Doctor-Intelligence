@@ -44,12 +44,38 @@ NPI_LABEL = {
 }
 
 # Optional Review “This record” patches when CSV cannot express demo-only presentation.
-RECORD_DISPLAY_OVERRIDES: Dict[str, Dict[str, Any]] = {}
-
-# Review grid only: show Practice match for a candidate NPI (no pipeline / score changes).
-REVIEW_PRACTICE_MATCH_UI: Dict[str, str] = {
-    "CLM-55102": "1848459461",
+RECORD_DISPLAY_OVERRIDES: Dict[str, Dict[str, Any]] = {
+    "CRM-9401": {
+        "name": "John Smith",
+        "npi": "1567874528",
+        "npi_label": "Verified",
+        "specialty": "oncology",
+        "city": None,
+        "state": "OH",
+        "practice": None,
+        "date": "2024-06-15",
+        "apply_npi_score": True,
+    },
 }
+
+# Review grid only: candidate NPI column for a record (display + NPI subtext/scoring).
+REVIEW_CANDIDATE_NPI_UI: Dict[str, Dict[str, str]] = {
+    "CRM-9401": {
+        "HCP-76B8B18D": "1567874528",
+        "HCP-719E7CD4": "1567774528",
+    },
+}
+
+# Review grid only: fixed match score for a candidate (display; does not change pipeline).
+REVIEW_CANDIDATE_SCORE_UI: Dict[str, Dict[str, float]] = {
+    "CRM-9401": {
+        "HCP-76B8B18D": 0.9,
+    },
+}
+
+# Demo records still in the pipeline but omitted from the Review workspace sidebar.
+REVIEW_QUEUE_EXCLUDED_RECORD_IDS = frozenset({"CRM-9602"})
+
 FIELD_MAP = {
     "first_name": "Name",
     "surname": "Name",
@@ -96,6 +122,8 @@ def build_review_board(state: Dict[str, Any]) -> Dict[str, Any]:
     for decision in decisions:
         uid = decision.get("uid")
         if not uid:
+            continue
+        if (decision.get("record_id") or "") in REVIEW_QUEUE_EXCLUDED_RECORD_IDS:
             continue
         safety = decision.get("safety") or {}
         changes = [c for c in (decision.get("proposed_changes") or []) if c.get("new_value")]
@@ -364,34 +392,103 @@ def _npi_subtext_contributions(
     return rest, score_delta
 
 
-def _ui_practice_organization(
-    contributions: List[Dict[str, Any]],
-    record_id: str,
-    candidate_npi: Optional[str],
-    record: Dict[str, Any],
-) -> List[Dict[str, Any]]:
-    agree_npi = REVIEW_PRACTICE_MATCH_UI.get(record_id or "")
-    if not agree_npi or candidate_npi != agree_npi:
-        return contributions
+def _record_practice_name(record: Dict[str, Any]) -> str:
     raw = record.get("raw") or {}
-    practice = (
+    return str(
         record.get("practice_name")
+        or record.get("practice")
         or raw.get("practice")
         or raw.get("Primary_Parent")
         or raw.get("organization")
         or ""
-    )
-    if not str(practice).strip():
+    ).strip()
+
+
+def _practice_tokens(text: str) -> set[str]:
+    stop = {
+        "the",
+        "and",
+        "of",
+        "at",
+        "inc",
+        "llc",
+        "pa",
+        "pc",
+        "corp",
+        "center",
+        "centre",
+        "clinic",
+        "associates",
+        "oncology",
+        "hematology",
+        "cancer",
+        "care",
+        "medical",
+        "health",
+        "group",
+        "institute",
+        "hospital",
+    }
+    return {
+        w
+        for w in "".join(ch.lower() if ch.isalnum() else " " for ch in text).split()
+        if w and w not in stop and len(w) > 2
+    }
+
+
+def _practice_organization_subtext(
+    contributions: List[Dict[str, Any]],
+    record: Dict[str, Any],
+    candidate_practice: str,
+) -> List[Dict[str, Any]]:
+    record_practice = _record_practice_name(record)
+    candidate_practice = str(candidate_practice or "").strip()
+    if not record_practice:
+        return contributions
+    if not candidate_practice:
+        rest = [c for c in contributions if c.get("field") != "organization"]
+        rest.append(
+            {
+                "field": "organization",
+                "status": "missing",
+                "delta": 0.0,
+                "detail": "Organization missing",
+            }
+        )
+        return rest
+    rec_t = _practice_tokens(record_practice)
+    cand_t = _practice_tokens(candidate_practice)
+    if not rec_t or not cand_t:
         return contributions
     rest = [c for c in contributions if c.get("field") != "organization"]
-    rest.append(
-        {
-            "field": "organization",
-            "status": "agree",
-            "delta": 0.0,
-            "detail": "Organization matches",
-        }
-    )
+    overlap = rec_t & cand_t
+    if rec_t <= cand_t or cand_t <= rec_t:
+        rest.append(
+            {
+                "field": "organization",
+                "status": "agree",
+                "delta": 0.0,
+                "detail": "Organization matches",
+            }
+        )
+    elif len(overlap) >= 2:
+        rest.append(
+            {
+                "field": "organization",
+                "status": "partial",
+                "delta": 0.0,
+                "detail": "Organization partially matches",
+            }
+        )
+    else:
+        rest.append(
+            {
+                "field": "organization",
+                "status": "conflict",
+                "delta": -0.04,
+                "detail": "Organization differs",
+            }
+        )
     return rest
 
 
@@ -416,24 +513,37 @@ def _candidates(
             doctor_id = next((did for did, doc in doctors.items() if doc.get("official_npi") == npi), doctor_id)
         doctor = doctors.get(doctor_id or "") or {}
         contributions = list(row.get("contributions") or [])
-        candidate_npi = doctor.get("official_npi") or row.get("target_npi")
+        resolved_id = doctor.get("doctor_id") or doctor_id or ""
+        ui_npi = (REVIEW_CANDIDATE_NPI_UI.get(record_id) or {}).get(resolved_id)
+        candidate_npi = ui_npi or doctor.get("official_npi") or row.get("target_npi")
         score_delta = 0.0
         if display_stated_npi:
             contributions, score_delta = _npi_subtext_contributions(contributions, candidate_npi, display_stated_npi)
             if not apply_npi_score:
                 score_delta = 0.0
-        contributions = _ui_practice_organization(contributions, record_id, candidate_npi, record)
+        contributions = _practice_organization_subtext(
+            contributions,
+            record,
+            practice_of.get(doctor.get("doctor_id") or "", ""),
+        )
         grid = _grid(contributions)
         base_score = row.get("score") if row.get("score") is not None else row.get("demo_score")
         try:
-            adjusted = round(float(base_score or 0) + score_delta, 2)
+            raw = float(base_score or 0) + score_delta
+            adjusted = round(max(0.0, min(1.0, raw)), 2)
         except (TypeError, ValueError):
             adjusted = base_score
+        ui_score = (REVIEW_CANDIDATE_SCORE_UI.get(record_id) or {}).get(resolved_id)
+        if ui_score is not None:
+            try:
+                adjusted = round(max(0.0, min(1.0, float(ui_score))), 2)
+            except (TypeError, ValueError):
+                pass
         built.append(
             {
                 "doctor_id": doctor.get("doctor_id") or doctor_id,
                 "name": doctor.get("preferred_name") or row.get("target_label") or row.get("doctor_name"),
-                "npi": doctor.get("official_npi"),
+                "npi": candidate_npi,
                 "specialty": doctor.get("specialty"),
                 "city": doctor.get("city"),
                 "state": doctor.get("state"),

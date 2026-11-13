@@ -267,7 +267,10 @@ button.li:hover { background: #f7f9fd; }
 .sym.y { background: var(--ok-bg); color: var(--ok); } .sym.p { background: var(--warn-bg); color: var(--warn); } .sym.n { background: var(--bad-bg); color: var(--bad); } .sym.m { background: var(--neu-bg); color: var(--neu); }
 .reason { border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 0 8px 8px 0; padding: 12px 14px; display: grid; gap: 8px; }
 .reason h4 { margin: 0; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); }
-.reason ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.reason ul.reason-bullets { margin: 0; padding-left: 18px; list-style: disc; font-size: 13.5px; line-height: 1.55; display: grid; gap: 8px; }
+.reason-bullets li { margin: 0; color: var(--fg); }
+.reason-bullets li.reason-step { list-style: none; margin-left: -18px; margin-top: 4px; padding-top: 8px; border-top: 1px solid var(--line); }
+.reason-bullets b { font-weight: 600; }
 .preview { border: 1px solid var(--accent-line); border-radius: var(--r); padding: 14px 16px; background: #fbfdff; display: grid; gap: 10px; animation: fadein .25s ease; }
 .preview ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .banner { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-radius: 8px; font-weight: 500; }
