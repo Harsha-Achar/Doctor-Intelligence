@@ -230,9 +230,9 @@ button.li:hover { background: #f7f9fd; }
 .lineage .nd.gold rect { fill: var(--accent-soft); stroke: var(--accent); }
 .lineage .nd.isnew rect { stroke: var(--new); stroke-width: 2; }
 .lineage .nd.pend rect { stroke: var(--warn); stroke-dasharray: 4 3; }
-.lineage path.e { fill: none; stroke: var(--line-2); stroke-width: 1.4; }
+.lineage path.e { fill: none; stroke: #8aa0b8; stroke-width: 1.6; }
 .lineage path.e.new { stroke: var(--new); }
-.lineage path.e.pend { stroke: var(--warn); stroke-dasharray: 4 3; }
+.lineage path.e.pend { stroke: var(--warn); stroke-dasharray: 5 4; }
 .lineage .nd { cursor: pointer; }
 
 .bars { display: grid; gap: 10px; }

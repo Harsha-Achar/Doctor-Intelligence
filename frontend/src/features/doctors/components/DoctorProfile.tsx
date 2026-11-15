@@ -590,12 +590,33 @@ function Timeline({ rows, events }: { rows: Row[]; events: HistoryEvent[] }) {
   );
 }
 
+const DECISION_ORDER = ['Legacy master', 'Verified NPI', 'Layer 2 match', 'Pending review'];
+
+function decisionOf(row: Row) {
+  if (row.pending) return 'Pending review';
+  if ((row.round ?? 0) > 0) return 'Layer 2 match';
+  if (row.sourceKey === 'legacy_master') return 'Legacy master';
+  return 'Verified NPI';
+}
+
+function lineageCurve(x1: number, y1: number, x2: number, y2: number) {
+  const bend = Math.max(36, (x2 - x1) * 0.46);
+  return `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
+}
+
+function clipText(value: string, max: number) {
+  const text = value.trim();
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
 function Lineage({ rows, doctor, practice }: { rows: Row[]; doctor: DoctorSummary; practice: string }) {
   const [filter, setFilter] = useState('all');
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const [detail, setDetail] = useState('');
   const visible = rows.filter((row) => {
-    if (filter === 'l1') return row.round === 0 || row.sourceKey === 'nppes' || row.sourceKey === 'legacy_master';
-    if (filter === 'l2') return (row.round ?? 0) > 0;
+    if (filter === 'l1') return !row.pending && (row.round ?? 0) === 0;
+    if (filter === 'l2') return !row.pending && (row.round ?? 0) > 0;
+    if (filter === 'new') return Boolean(doctor.is_new);
     return true;
   });
   const sources = [...new Set(visible.map((row) => row.sourceKey))];
@@ -613,7 +634,6 @@ function Lineage({ rows, doctor, practice }: { rows: Row[]; doctor: DoctorSummar
       return next;
     });
   }
-  const decisions = [...new Set(visible.map((row) => (row.pending ? 'Pending review' : row.round === 0 ? 'Verified NPI' : 'Layer 2 match')))];
   return (
     <>
       <div className="chips" style={{ marginBottom: 12 }}>
@@ -621,6 +641,7 @@ function Lineage({ rows, doctor, practice }: { rows: Row[]; doctor: DoctorSummar
           ['all', 'All'],
           ['l1', 'Verified NPI'],
           ['l2', 'Layer 2'],
+          ['new', 'New'],
         ].map(([id, label]) => (
           <button key={id} type="button" className={`chip ${filter === id ? 'on' : ''}`} onClick={() => setFilter(id)}>
             {label}
@@ -628,15 +649,17 @@ function Lineage({ rows, doctor, practice }: { rows: Row[]; doctor: DoctorSummar
         ))}
         <button type="button" className="chip" onClick={() => setOpen(new Set(sources))}>Expand all</button>
         <button type="button" className="chip" onClick={() => setOpen(new Set())}>Collapse all</button>
-        <span className="muted" style={{ marginLeft: 'auto', fontSize: 13 }}>Click a source to expand</span>
+        <span className="muted" style={{ marginLeft: 'auto', fontSize: 13 }}>Click a source to expand · click any node for details</span>
       </div>
       {blocks.length ? (
-        <LineageSvg blocks={blocks} decisions={decisions} doctor={doctor} practice={practice} onToggle={toggle} />
+        <LineageSvg blocks={blocks} doctor={doctor} practice={practice} fresh={Boolean(doctor.is_new)} onToggle={toggle} onDetail={setDetail} />
       ) : (
         <div className="empty"><b>No records for this filter</b></div>
       )}
+      {detail ? <p className="muted" style={{ margin: '8px 0 0' }}>{detail}</p> : null}
       <div className="chips" style={{ marginTop: 10, fontSize: 12, color: 'var(--muted)' }}>
-        <span><span className="dot" style={{ background: 'var(--warn)' }} />Pending review</span>
+        <span><span className="dot" style={{ background: 'var(--new)' }} />New</span>
+        <span><span className="dot" style={{ background: 'var(--warn)' }} />Pending review (dashed)</span>
         <span><span className="dot" style={{ background: 'var(--accent)' }} />Golden record</span>
       </div>
     </>
@@ -645,66 +668,199 @@ function Lineage({ rows, doctor, practice }: { rows: Row[]; doctor: DoctorSummar
 
 function LineageSvg({
   blocks,
-  decisions,
   doctor,
   practice,
+  fresh,
   onToggle,
+  onDetail,
 }: {
   blocks: Array<{ key: string; source: string; rows: Row[]; expanded: boolean }>;
-  decisions: string[];
   doctor: DoctorSummary;
   practice: string;
+  fresh: boolean;
   onToggle: (source: string) => void;
+  onDetail: (text: string) => void;
 }) {
-  const rowH = 46;
-  const items: Array<{ kind: 'rec' | 'grp'; block: (typeof blocks)[number]; row?: Row }> = [];
+  const rowH = 62;
+  const recH = 46;
+  const srcH = 50;
+  const lanes: Array<{ key: string; block: (typeof blocks)[number]; row?: Row; kind: 'rec' | 'grp'; y: number }> = [];
+  let cursor = 36;
   blocks.forEach((block) => {
-    if (block.expanded) block.rows.forEach((row) => items.push({ kind: 'rec', block, row }));
-    else items.push({ kind: 'grp', block, row: block.rows[0] });
+    if (block.expanded) {
+      block.rows.forEach((row, index) => {
+        lanes.push({ key: `${block.key}-${row.id}-${index}`, block, row, kind: 'rec', y: cursor });
+        cursor += rowH;
+      });
+    } else {
+      lanes.push({ key: `${block.key}-grp`, block, kind: 'grp', y: cursor });
+      cursor += rowH;
+    }
   });
-  const height = Math.max(240, items.length * rowH + 40);
-  const goldY = height / 2;
-  const decY = (index: number) => 40 + ((height - 80) * (index + 0.5)) / Math.max(1, decisions.length);
+  const height = Math.max(210, cursor + 8);
+  const centerOf = (top: number) => top + recH / 2;
+  const spanOf = (blockKey: string) => {
+    const own = lanes.filter((lane) => lane.block.key === blockKey);
+    const first = own[0];
+    const last = own[own.length - 1];
+    return (centerOf(first.y) + centerOf(last.y)) / 2;
+  };
+  const decisions = DECISION_ORDER.filter((label) => blocks.some((block) => block.rows.some((row) => decisionOf(row) === label)));
+  const firstY = centerOf(lanes[0].y);
+  const lastY = centerOf(lanes[lanes.length - 1].y);
+  const decisionYs = decisions.map((label) => {
+    const anchors: number[] = [];
+    lanes.forEach((lane) => {
+      const rows = lane.kind === 'rec' && lane.row ? [lane.row] : lane.block.rows;
+      if (rows.some((row) => decisionOf(row) === label)) anchors.push(centerOf(lane.y));
+    });
+    const average = anchors.length ? anchors.reduce((sum, value) => sum + value, 0) / anchors.length : (firstY + lastY) / 2;
+    return { label, y: average };
+  });
+  const gap = 48;
+  decisionYs.sort((left, right) => left.y - right.y);
+  for (let index = 1; index < decisionYs.length; index += 1) {
+    if (decisionYs[index].y < decisionYs[index - 1].y + gap) decisionYs[index].y = decisionYs[index - 1].y + gap;
+  }
+  const overflow = decisionYs.length ? decisionYs[decisionYs.length - 1].y - (height - 28) : 0;
+  if (overflow > 0) decisionYs.forEach((item) => { item.y -= overflow; });
+  const decisionAt = new Map(decisionYs.map((item) => [item.label, item.y]));
+  const goldH = 96;
+  const goldMid = (firstY + lastY) / 2;
+  const goldTop = Math.min(Math.max(28, goldMid - goldH / 2), height - goldH - 8);
+  const srcX = 16;
+  const srcW = 196;
+  const recX = 258;
+  const recW = 228;
+  const decX = 536;
+  const decW = 168;
+  const goldX = 756;
+  const goldW = 210;
+
+  const edges: Array<{ key: string; d: string; pending: boolean; fresh: boolean }> = [];
+  const pushEdge = (key: string, x1: number, y1: number, x2: number, y2: number, pending: boolean, isFresh: boolean) => {
+    edges.push({ key, d: lineageCurve(x1, y1, x2, y2), pending, fresh: isFresh && !pending });
+  };
+  lanes.forEach((lane) => {
+    const y = centerOf(lane.y);
+    const sourceY = spanOf(lane.block.key);
+    const rows = lane.kind === 'rec' && lane.row ? [lane.row] : lane.block.rows;
+    pushEdge(`src-${lane.key}`, srcX + srcW, sourceY, recX, y, rows.every((row) => row.pending), fresh);
+    const byDecision = new Map<string, Row[]>();
+    rows.forEach((row) => {
+      const label = decisionOf(row);
+      byDecision.set(label, [...(byDecision.get(label) || []), row]);
+    });
+    [...byDecision.entries()].forEach(([label, group], index) => {
+      const spread = (index - (byDecision.size - 1) / 2) * 7;
+      pushEdge(
+        `dec-${lane.key}-${label}`,
+        recX + recW,
+        y + spread,
+        decX,
+        decisionAt.get(label) || y,
+        group.every((row) => row.pending),
+        fresh,
+      );
+    });
+  });
+  decisions.forEach((label, index) => {
+    const attach = goldTop + (goldH * (index + 1)) / (decisions.length + 1);
+    pushEdge(`gold-${label}`, decX + decW, decisionAt.get(label) || goldMid, goldX, attach, label === 'Pending review', fresh);
+  });
+
+  function describe(rows: Row[], title: string) {
+    const parts = DECISION_ORDER.filter((label) => rows.some((row) => decisionOf(row) === label));
+    onDetail(`${title}: ${rows.length} record${rows.length === 1 ? '' : 's'} · ${parts.join(' · ') || 'Linked'}`);
+  }
+
   return (
     <div className="lineage">
-      <svg viewBox={`0 0 960 ${height + 10}`} role="img" aria-label={`Lineage graph for ${doctor.preferred_name}`}>
+      <svg viewBox={`0 0 980 ${height}`} role="img" aria-label={`Lineage graph for ${doctor.preferred_name}`}>
+        {edges.map((edge) => (
+          <path key={edge.key} className={`e${edge.pending ? ' pend' : ''}${edge.fresh ? ' new' : ''}`} d={edge.d} pointerEvents="none" />
+        ))}
         {['Source', 'Record', 'Match decision', 'Golden record'].map((label, index) => (
-          <text key={label} x={[20, 230, 520, 740][index]} y="16" className="s" style={{ fontSize: 11, letterSpacing: '0.06em', fill: 'var(--muted)' }}>
+          <text key={label} x={[srcX, recX, decX, goldX][index]} y="16" style={{ fontSize: 11, letterSpacing: '0.06em', fill: 'var(--muted)' }}>
             {label.toUpperCase()}
           </text>
         ))}
-        {blocks.map((block, index) => {
-          const y = 40 + index * ((height - 40) / Math.max(1, blocks.length));
+        {blocks.map((block) => {
+          const y = spanOf(block.key);
+          const name = block.rows[0]?.source || block.source;
           return (
-            <g key={block.key} className="nd src" tabIndex={0} role="button" onClick={() => onToggle(block.source)}>
-              <rect x="20" y={y - 20} width="170" height="40" rx="8" />
-              <text x="32" y={y - 2} fontWeight="600">{block.expanded ? '▾' : '▸'} {block.rows[0]?.source}</text>
-              <text x="44" y={y + 14} className="s">{block.rows.length} record{block.rows.length > 1 ? 's' : ''}</text>
+            <g
+              key={block.key}
+              className={`nd src${fresh ? ' isnew' : ''}`}
+              tabIndex={0}
+              role="button"
+              onClick={() => {
+                describe(block.rows, name);
+                onToggle(block.source);
+              }}
+            >
+              <rect x={srcX} y={y - srcH / 2} width={srcW} height={srcH} rx="8" />
+              <text x={srcX + 12} y={y - 4} fontWeight="600">{block.expanded ? '▾' : '▸'} {clipText(name, 22)}</text>
+              <text x={srcX + 26} y={y + 14} className="s">{block.rows.length} record{block.rows.length > 1 ? 's' : ''}</text>
             </g>
           );
         })}
-        {items.map((item, index) => {
-          const y = 40 + index * rowH;
-          const label = item.kind === 'rec' ? item.row?.id || '' : `${item.block.rows.length} ${item.block.rows[0]?.source} records`;
+        {lanes.map((lane) => {
+          const rows = lane.kind === 'rec' && lane.row ? [lane.row] : lane.block.rows;
+          const pending = rows.every((row) => row.pending);
+          const label = lane.kind === 'rec' && lane.row
+            ? lane.row.id
+            : `${lane.block.rows.length} ${lane.block.rows[0]?.source || 'source'} record${lane.block.rows.length > 1 ? 's' : ''}`;
           return (
-            <g key={`${item.block.key}-${item.row?.id || 'grp'}-${index}`} className={`nd ${item.row?.pending ? 'pend' : ''}`} tabIndex={0} role="button" onClick={() => onToggle(item.block.source)}>
-              <rect x="230" y={y} width="230" height="36" rx="7" />
-              <text x="240" y={y + 22}>{label}</text>
+            <g
+              key={lane.key}
+              className={`nd${pending ? ' pend' : ''}${fresh ? ' isnew' : ''}`}
+              tabIndex={0}
+              role="button"
+              onClick={() => {
+                if (lane.kind === 'rec' && lane.row) {
+                  onDetail(`${lane.row.id} · ${lane.row.source} · ${decisionOf(lane.row)}${lane.row.foundBy ? ` · ${lane.row.foundBy}` : ''}`);
+                  return;
+                }
+                describe(lane.block.rows, lane.block.rows[0]?.source || 'Records');
+                onToggle(lane.block.source);
+              }}
+            >
+              <rect x={recX} y={lane.y} width={recW} height={recH} rx="8" />
+              <text x={recX + 12} y={lane.y + 18} fontWeight="600">{clipText(label, 32)}</text>
+              <text x={recX + 12} y={lane.y + 34} className="s">{lane.kind === 'rec' ? decisionOf(lane.row as Row) : 'Click to expand'}</text>
             </g>
           );
         })}
-        {decisions.map((label, index) => (
-          <g key={label} className="nd dec">
-            <rect x="520" y={decY(index) - 18} width="170" height="36" rx="18" />
-            <text x="605" y={decY(index) + 4} textAnchor="middle">{label}</text>
-          </g>
-        ))}
-        <g className="nd gold">
-          <rect x="740" y={goldY - 46} width="200" height="92" rx="10" />
-          <text x="754" y={goldY - 16} fontWeight="700">{doctor.preferred_name}</text>
-          <text x="754" y={goldY + 2} className="s">NPI {doctor.official_npi || 'none'}</text>
-          <text x="754" y={goldY + 18} className="s">{practice.slice(0, 30) || 'Practice not recorded'}</text>
-          <text x="754" y={goldY + 34} className="s">Golden record</text>
+        {decisions.map((label) => {
+          const y = decisionAt.get(label) || goldMid;
+          return (
+            <g
+              key={label}
+              className={`nd dec${label === 'Pending review' ? ' pend' : ''}`}
+              tabIndex={0}
+              role="button"
+              onClick={() => {
+                const matched = blocks.flatMap((block) => block.rows).filter((row) => decisionOf(row) === label);
+                onDetail(`${label}: ${matched.map((row) => row.id).join(', ')}`);
+              }}
+            >
+              <rect x={decX} y={y - 18} width={decW} height="36" rx="18" />
+              <text x={decX + decW / 2} y={y + 4} textAnchor="middle">{label}</text>
+            </g>
+          );
+        })}
+        <g
+          className={`nd gold${fresh ? ' isnew' : ''}`}
+          tabIndex={0}
+          role="button"
+          onClick={() => onDetail(`${doctor.preferred_name} · NPI ${doctor.official_npi || 'none'} · ${practice || 'Practice not recorded'}`)}
+        >
+          <rect x={goldX} y={goldTop} width={goldW} height={goldH} rx="10" />
+          <text x={goldX + 14} y={goldTop + 28} fontWeight="700">{clipText(doctor.preferred_name, 24)}</text>
+          <text x={goldX + 14} y={goldTop + 48} className="s">NPI {doctor.official_npi || 'none'}</text>
+          <text x={goldX + 14} y={goldTop + 66} className="s">{clipText(practice || 'Practice not recorded', 28)}</text>
+          <text x={goldX + 14} y={goldTop + 84} className="s">Golden record</text>
         </g>
       </svg>
     </div>

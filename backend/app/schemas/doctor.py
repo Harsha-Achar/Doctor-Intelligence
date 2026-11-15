@@ -123,6 +123,13 @@ class SourceRecordItem(BaseModel):
     evidence_ids: List[str] = Field(default_factory=list)
     normalized: Dict[str, Any] = Field(default_factory=dict)
     linkage_explanation: Optional[str] = None
+    display_id: Optional[str] = None
+    match_score: Optional[float] = None
+    found_by: List[str] = Field(default_factory=list)
+    match_round: Optional[int] = None
+    npi_status: Optional[str] = None
+    match_action: Optional[str] = None
+    amount_cents: Optional[int] = None
 
 
 class HistoryEvent(BaseModel):
