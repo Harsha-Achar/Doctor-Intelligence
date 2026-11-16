@@ -30,6 +30,7 @@ NOUN = {
     "notes": "note",
     "legacy_master": "master record",
     "nppes": "registry record",
+    "upload": "uploaded record",
 }
 NPI_LABEL = {
     "VERIFIED": "Verified",
@@ -78,6 +79,7 @@ REVIEW_QUEUE_EXCLUDED_RECORD_IDS = frozenset({"CRM-9602"})
 
 FIELD_MAP = {
     "first_name": "Name",
+    "name": "Name",
     "surname": "Name",
     "former_name": "Name",
     "former_surname": "Name",
@@ -93,6 +95,7 @@ SYMBOL = {
     "agree": ("✓", "Match"),
     "partial": ("≈", "Partial"),
     "conflict": ("✗", "Conflict"),
+    "disagree": ("✗", "Conflict"),
     "missing": ("—", "Missing"),
 }
 
@@ -185,6 +188,8 @@ def _queue_type(
             return "compliance"
         if review.get("case_type") == "not_a_person":
             return None
+        if review.get("case_type") == "unmatched" or action == "UNMATCHED":
+            return "unmatched"
         return "identity"
     if action == "COMPLIANCE_REVIEW":
         return "compliance"

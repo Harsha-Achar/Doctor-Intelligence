@@ -60,7 +60,9 @@ export function UploadMatchPage() {
       setBatch(next);
       queryClient.invalidateQueries({ queryKey: ['upload-batches'] });
       queryClient.invalidateQueries({ queryKey: ['reviews'] });
+      queryClient.invalidateQueries({ queryKey: ['review-workspace'] });
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
     } catch (err) {
       setError((err as Error).message);
     }

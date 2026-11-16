@@ -294,6 +294,7 @@ class UploadService:
                         "severity": "high" if action == "COMPLIANCE_REVIEW" else "medium",
                         "status": "pending",
                         "source_record_id": uid,
+                        "source_key": "upload",
                         "candidate_doctor_id": result.get("doctor_id"),
                         "pipeline_action": action,
                         "pipeline_reason": result.get("reason"),
@@ -306,6 +307,11 @@ class UploadService:
                         "upload_batch_id": batch_id,
                     }
                     rb["review_ids_added"].append(rid)
+                    candidate_rows = _upload_candidate_rows(rid, result)
+                    state.setdefault("review_candidates", []).extend(candidate_rows)
+                    state.setdefault("match_decisions", []).append(
+                        _upload_match_decision(batch_id, uid, rec, result, action, candidate_rows)
+                    )
 
                 if action == "CREATE_FROM_NPPES" and result.get("npi"):
                     did = f"GR-{result['npi']}"
@@ -324,6 +330,8 @@ class UploadService:
                             "open_issue_count": 0,
                         }
                         rb["doctor_ids_added"].append(did)
+                    result["doctor_id"] = did
+                    _point_upload_review(state, uid, did)
                 if action == "CREATE_PROVISIONAL":
                     did = f"GR-PROV-{uuid.uuid4().hex[:8].upper()}"
                     state.setdefault("doctors", {})[did] = {
@@ -341,6 +349,7 @@ class UploadService:
                     }
                     rb["doctor_ids_added"].append(did)
                     result["doctor_id"] = did
+                    _point_upload_review(state, uid, did)
 
             # update batch in state list
             for b in state.get("upload_batches") or []:
@@ -386,6 +395,16 @@ class UploadService:
                 state.get("doctors", {}).pop(did, None)
             for uid in rb.get("record_ids_added") or []:
                 state.get("source_records", {}).pop(uid, None)
+            added_uids = set(rb.get("record_ids_added") or [])
+            added_reviews = set(rb.get("review_ids_added") or [])
+            if added_uids:
+                state["match_decisions"] = [
+                    row for row in (state.get("match_decisions") or []) if row.get("uid") not in added_uids
+                ]
+            if added_reviews:
+                state["review_candidates"] = [
+                    row for row in (state.get("review_candidates") or []) if row.get("review_id") not in added_reviews
+                ]
             for b in state.get("upload_batches") or []:
                 if b.get("batch_id") == batch_id:
                     b["committed"] = False
@@ -839,3 +858,81 @@ class UploadService:
         batch["status"] = "matched"
         self._set_step(batch, "route", "done")
         self._set_step(batch, "review_results", "done")
+
+
+def _point_upload_review(state: Dict[str, Any], uid: str, doctor_id: str) -> None:
+    review = (state.get("reviews") or {}).get(f"REV-{uid}")
+    if review and not review.get("doctor_id"):
+        review["doctor_id"] = doctor_id
+        review["candidate_doctor_id"] = doctor_id
+    for decision in state.get("match_decisions") or []:
+        if decision.get("uid") == uid and not decision.get("target_id"):
+            decision["target_id"] = doctor_id
+
+
+def _upload_record_label(rec: Dict[str, Any], uid: str) -> str:
+    raw = rec.get("raw") or {}
+    for key in ("Account_ID", "record_id", "claim_id"):
+        if raw.get(key):
+            return str(raw[key])
+    name = ((rec.get("standardized") or {}).get("name") or {}).get("display")
+    return str(name or uid)
+
+
+def _upload_candidate_rows(review_id: str, result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for index, cand in enumerate((result.get("candidates") or [])[:3]):
+        if not cand.get("doctor_id"):
+            continue
+        contributions = []
+        for item in cand.get("contributions") or []:
+            field = "first_name" if item.get("field") == "name" else item.get("field")
+            status = "conflict" if item.get("status") == "disagree" else item.get("status")
+            contributions.append({**item, "field": field, "status": status})
+        rows.append(
+            {
+                "review_id": review_id,
+                "candidate_doctor_id": cand["doctor_id"],
+                "rank": index + 1,
+                "score": cand.get("score"),
+                "hard_stops": cand.get("hard_stops") or [],
+                "contributions": contributions,
+                "target_id": cand["doctor_id"],
+                "target_label": cand.get("doctor_name"),
+                "target_npi": cand.get("npi"),
+            }
+        )
+    return rows
+
+
+def _upload_match_decision(
+    batch_id: str,
+    uid: str,
+    rec: Dict[str, Any],
+    result: Dict[str, Any],
+    action: str,
+    candidate_rows: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    name = ((rec.get("standardized") or {}).get("name") or {}).get("display")
+    return {
+        "record_id": _upload_record_label(rec, uid),
+        "uid": uid,
+        "source_key": "upload",
+        "stated_npi": result.get("stated_npi") or "",
+        "display_name": name,
+        "action": action,
+        "outcome": action,
+        "npi_status": result.get("stated_npi_status") or "",
+        "target_id": result.get("doctor_id"),
+        "target_npi": result.get("npi"),
+        "target_label": result.get("doctor_name"),
+        "score": result.get("score"),
+        "margin": None,
+        "reason": result.get("reason"),
+        "hard_stops": result.get("conflicts") or [],
+        "contributions": (candidate_rows[0].get("contributions") if candidate_rows else []),
+        "proposed_changes": [],
+        "safety": {},
+        "found_by": ["upload"],
+        "upload_batch_id": batch_id,
+    }

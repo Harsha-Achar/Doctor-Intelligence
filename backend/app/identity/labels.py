@@ -11,6 +11,7 @@ SOURCE_LABELS = {
     "payments": "Payments",
     "hub": "Hub",
     "notes": "Notes",
+    "upload": "Upload",
 }
 
 CASE_TYPE_LABELS = {

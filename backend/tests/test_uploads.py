@@ -27,6 +27,18 @@ def test_structured_upload_and_duplicate(client):
     assert res3.status_code == 200, res3.text
     assert res3.json()["committed"] is True
 
+    needs_review = [row for row in matched["results"] if row.get("action") != "LINK"]
+    assert needs_review
+    board = client.get("/api/v1/reviews/workspace")
+    assert board.status_code == 200, board.text
+    uploaded = [
+        item
+        for item in board.json()["items"]
+        if str(item.get("record_uid") or "").startswith("upload:")
+    ]
+    assert len(uploaded) == len(needs_review)
+    assert {item["source_key"] for item in uploaded} == {"upload"}
+
     # duplicate upload makes no changes
     res4 = client.post("/api/v1/uploads", data={"mode": "structured"}, files=files)
     assert res4.status_code == 200
