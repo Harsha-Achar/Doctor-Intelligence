@@ -1,0 +1,65 @@
+sp_patient_id,pharmacy_name,hub_case_id,copay_card_id,fill_date,ndc,quantity,days_supply,status,birth_year,sex,zip3,prescriber_npi,payer_type
+SPP-2001,Meridian Specialty Pharmacy,H-5001,,2026-03-20,0000-0001,3,21,Shipped,1968,F,303,1576635514,Commercial
+SPP-2025,Accordia Specialty,H-5026,,2026-03-20,0000-0001,3,21,Shipped,1966,F,303,1576635514,Commercial
+SPP-2002,CarePoint Specialty,H-5002,,2026-03-27,0000-0001,3,21,Shipped,1957,M,981,1060873258,Medicare
+SPP-2003,Northlake Specialty Rx,H-5003,,2026-04-03,0000-0001,3,21,Shipped,1975,F,606,1309803819,Commercial
+SPP-2021,Harbor Oncology Pharmacy,H-5021,,2026-04-03,0000-0001,3,21,Shipped,1971,F,850,1983861240,Commercial
+SPP-2001,Meridian Specialty Pharmacy,H-5001,,2026-04-10,0000-0001,3,21,Shipped,1968,F,303,1576635514,Commercial
+SPP-2004,Accordia Specialty,H-5004,,2026-04-10,0000-0002,4,21,Shipped,1962,F,554,1196825297,Medicare
+SPP-2025,Accordia Specialty,H-5026,,2026-04-10,0000-0001,3,21,Shipped,1966,F,303,1576635514,Commercial
+SPP-2002,CarePoint Specialty,H-5002,,2026-04-17,0000-0001,3,21,Shipped,1957,M,981,1060873258,Medicare
+SPP-2014,Accordia Specialty,H-5014,,2026-04-17,0000-0001,3,21,Shipped,1961,F,441,1567874528,Medicare
+SPP-2005,Harbor Oncology Pharmacy,H-5005,,2026-04-19,0000-0001,3,21,Shipped,1970,M,752,1704243926,Commercial
+SPP-2003,Northlake Specialty Rx,H-5003,,2026-04-24,0000-0001,3,21,Shipped,1975,F,606,1309803819,Commercial
+SPP-2006,Meridian Specialty Pharmacy,H-5006,,2026-04-24,0000-0001,3,21,Shipped,1959,F,441,1567874528,Medicare
+SPP-2021,Harbor Oncology Pharmacy,H-5021,,2026-04-24,0000-0001,3,21,Shipped,1971,F,850,1983861240,Commercial
+SPP-2022,Meridian Specialty Pharmacy,H-5022,,2026-04-24,0000-0001,3,21,Shipped,1956,F,972,1370429593,Medicare
+SPP-2001,Meridian Specialty Pharmacy,H-5001,,2026-05-01,0000-0001,3,21,Shipped,1968,F,303,1576635514,Commercial
+SPP-2004,Accordia Specialty,H-5004,,2026-05-01,0000-0002,4,21,Shipped,1962,F,554,1196825297,Medicare
+SPP-2007,CarePoint Specialty,H-5007,,2026-05-01,0000-0002,4,21,Shipped,1981,F,972,1370429593,Commercial
+SPP-2023,CarePoint Specialty,H-5023,,2026-05-01,0000-0001,3,21,Shipped,1965,M,981,1060873258,Commercial
+SPP-2008,Northlake Specialty Rx,H-5008,,2026-05-08,0000-0001,3,21,Shipped,1966,F,282,1458829631,Commercial
+SPP-2014,Accordia Specialty,H-5014,,2026-05-08,0000-0001,3,21,Shipped,1961,F,441,1567874528,Medicare
+SPP-2027,Meridian Specialty Pharmacy,H-5028,,2026-05-08,0000-0003,60,30,Shipped,1952,M,021,1500605765,Medicare
+SPP-2005,Harbor Oncology Pharmacy,H-5005,,2026-05-10,0000-0001,3,21,Shipped,1970,M,752,1704243926,Commercial
+SPP-2006,Meridian Specialty Pharmacy,H-5006,,2026-05-15,0000-0001,3,21,Shipped,1959,F,441,1567874528,Medicare
+SPP-2016,Harbor Oncology Pharmacy,H-5015,,2026-05-15,0000-0001,3,21,Shipped,1958,M,554,1196825297,Medicare
+SPP-2021,Harbor Oncology Pharmacy,H-5021,,2026-05-15,0000-0001,2,21,Shipped,1971,F,850,1983861240,Commercial
+SPP-2022,Meridian Specialty Pharmacy,H-5022,,2026-05-15,0000-0001,3,21,Shipped,1956,F,972,1370429593,Medicare
+SPP-2001,Meridian Specialty Pharmacy,H-5001,,2026-05-22,0000-0001,3,21,Shipped,1968,F,303,1576635514,Commercial
+SPP-2007,CarePoint Specialty,H-5007,,2026-05-22,0000-0002,4,21,Shipped,1981,F,972,1370429593,Commercial
+SPP-2009,Accordia Specialty,H-5009,,2026-05-22,0000-0001,3,21,Shipped,1953,M,850,1983861240,Medicare
+SPP-2023,CarePoint Specialty,H-5023,,2026-05-22,0000-0001,3,21,Discontinued - side effects,1965,M,981,1060873258,Commercial
+SPP-2008,Northlake Specialty Rx,H-5008,,2026-05-29,0000-0001,3,21,Shipped,1966,F,282,1458829631,Commercial
+SPP-2010,Harbor Oncology Pharmacy,H-5010,,2026-05-29,0000-0001,3,21,Shipped,1972,F,303,1576635514,Commercial
+SPP-2015,Meridian Specialty Pharmacy,,,2026-05-29,0000-0001,3,21,Shipped,1961,F,441,1567874528,Medicare
+SPP-2024,Northlake Specialty Rx,,,2026-05-29,0000-0003,60,30,Shipped,1973,F,331,1420493599,Commercial
+SPP-2011,Meridian Specialty Pharmacy,,CP-7001,2026-06-05,0000-0001,3,21,Shipped,1979,F,981,1060873258,Commercial
+SPP-2016,Harbor Oncology Pharmacy,H-5015,,2026-06-05,0000-0001,3,21,Shipped,1958,M,554,1196825297,Medicare
+SPP-2021,Harbor Oncology Pharmacy,H-5021,,2026-06-05,0000-0001,2,21,Shipped,1971,F,850,1983861240,Commercial
+SPP-2027,Meridian Specialty Pharmacy,H-5028,,2026-06-07,0000-0003,60,30,Shipped,1952,M,021,1500605765,Medicare
+SPP-2009,Accordia Specialty,H-5009,,2026-06-12,0000-0001,3,21,Shipped,1953,M,850,1983861240,Medicare
+SPP-2012,CarePoint Specialty,,CP-7002,2026-06-12,0000-0001,3,21,Shipped,1974,M,606,1309803819,Commercial
+SPP-2028,CarePoint Specialty,H-5029,,2026-06-17,0000-0002,4,21,Shipped,1970,F,331,1420493599,Commercial
+SPP-2010,Harbor Oncology Pharmacy,H-5010,,2026-06-19,0000-0001,3,21,Shipped,1972,F,303,1576635514,Commercial
+SPP-2013,Northlake Specialty Rx,,,2026-06-19,0000-0001,3,21,Shipped,1964,F,972,1370429593,Commercial
+SPP-2015,Meridian Specialty Pharmacy,,,2026-06-19,0000-0001,3,21,Shipped,1961,F,441,1567874528,Medicare
+SPP-2022,Meridian Specialty Pharmacy,H-5022,,2026-06-19,0000-0001,3,21,Shipped,1956,F,972,1370429593,Medicare
+SPP-2011,Meridian Specialty Pharmacy,,CP-7001,2026-06-26,0000-0001,3,21,Shipped,1979,F,981,1060873258,Commercial
+SPP-2017,Meridian Specialty Pharmacy,H-5017,,2026-06-26,0000-0001,3,21,Shipped,1969,F,282,1458829631,Commercial
+SPP-2024,Northlake Specialty Rx,,,2026-06-28,0000-0003,60,30,Shipped,1973,F,331,1420493599,Commercial
+SPP-2012,CarePoint Specialty,,CP-7002,2026-07-03,0000-0001,3,21,Shipped,1974,M,606,1309803819,Commercial
+SPP-2018,CarePoint Specialty,H-5018,,2026-07-03,0000-0001,3,21,Shipped,1963,M,752,1704243926,Commercial
+SPP-2027,Meridian Specialty Pharmacy,H-5028,,2026-07-07,0000-0003,60,30,Shipped,1952,M,021,1500605765,Medicare
+SPP-2028,CarePoint Specialty,H-5029,,2026-07-08,0000-0002,4,21,Shipped,1970,F,331,1420493599,Commercial
+SPP-2013,Northlake Specialty Rx,,,2026-07-10,0000-0001,3,21,Shipped,1964,F,972,1370429593,Commercial
+SPP-2019,Northlake Specialty Rx,H-5019,,2026-07-10,0000-0001,3,21,Shipped,1960,F,303,1576635514,Commercial
+SPP-2022,Meridian Specialty Pharmacy,H-5022,,2026-07-10,0000-0001,3,21,Shipped,1956,F,972,1370429593,Medicare
+SPP-2017,Meridian Specialty Pharmacy,H-5017,,2026-07-17,0000-0001,3,21,Shipped,1969,F,282,1458829631,Commercial
+SPP-2020,Accordia Specialty,H-5020,,2026-07-17,0000-0001,3,21,Shipped,1967,M,606,1060873258,Commercial
+SPP-2018,CarePoint Specialty,H-5018,,2026-07-24,0000-0001,3,21,Shipped,1963,M,752,1704243926,Commercial
+SPP-2019,Northlake Specialty Rx,H-5019,,2026-07-31,0000-0001,3,21,Shipped,1960,F,303,1576635514,Commercial
+SPP-2026,Harbor Oncology Pharmacy,H-5027,,2026-07-31,0000-0001,3,21,Shipped,1966,F,303,1576635514,Commercial
+SPP-2027,Meridian Specialty Pharmacy,H-5028,,2026-08-06,0000-0003,60,30,Shipped,1952,M,021,1500605765,Medicare
+SPP-2020,Accordia Specialty,H-5020,,2026-08-07,0000-0001,3,21,Shipped,1967,M,606,1060873258,Commercial
+SPP-2026,Harbor Oncology Pharmacy,H-5027,,2026-08-21,0000-0001,3,21,Shipped,1966,F,303,1576635514,Commercial

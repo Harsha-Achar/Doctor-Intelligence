@@ -90,8 +90,14 @@ def create_app() -> FastAPI:
         from app.identity.summary_jobs import schedule_summaries
 
         schedule_summaries([doctor["doctor_id"] for doctor in repo.list_doctors()], force=False)
+        from app.patients.pipeline import ensure_ready
+
+        ensure_ready()
 
     app.include_router(api_router, prefix=settings.api_prefix)
+    from app.patients.api import router as patients_router
+
+    app.include_router(patients_router, prefix="/api/patients")
     return app
 
 

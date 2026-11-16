@@ -1,4 +1,5 @@
 import { ClipboardList, LayoutDashboard, Users } from 'lucide-react';
+import { Shield } from 'lucide-react';
 
 export type NavChild = { to: string; label: string };
 
@@ -13,4 +14,5 @@ export const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/doctors', label: 'Golden Records', icon: Users },
   { to: '/review', label: 'Review', icon: ClipboardList },
+  { to: '/patients', label: 'Patient Analytics', icon: Shield },
 ];

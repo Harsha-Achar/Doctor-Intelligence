@@ -5,6 +5,13 @@ import { GoldenRecordsPage } from '../pages/GoldenRecordsPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { OverviewPage } from '../pages/OverviewPage';
 import { ReviewsPage } from '../pages/ReviewsPage';
+import { AnalyticsPage } from '../patients/AnalyticsPage';
+import { DataPage } from '../patients/DataPage';
+import { PatientPage } from '../patients/PatientPage';
+import { PatientsLayout } from '../patients/PatientsLayout';
+import { PatientsPage } from '../patients/PatientsPage';
+import { PrivacyPage } from '../patients/PrivacyPage';
+import { ReviewPage } from '../patients/ReviewPage';
 
 function LegacyDoctorRedirect() {
   const { doctorId = '' } = useParams();
@@ -37,6 +44,14 @@ export function AppRouter() {
         <Route path="/add-data" element={<Navigate to="/?upload=1" replace />} />
         <Route path="/add-data/history" element={<Navigate to="/?upload=1" replace />} />
         <Route path="/upload" element={<Navigate to="/?upload=1" replace />} />
+        <Route path="/patients" element={<PatientsLayout />}>
+          <Route index element={<DataPage />} />
+          <Route path="list" element={<PatientsPage />} />
+          <Route path="review" element={<ReviewPage />} />
+          <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="privacy" element={<PrivacyPage />} />
+          <Route path=":patientId" element={<PatientPage />} />
+        </Route>
         <Route path="/sources" element={<Navigate to="/?section=sources" replace />} />
         <Route path="/audit/sources" element={<Navigate to="/?section=sources" replace />} />
         <Route path="/audit/profiles" element={<Navigate to="/?how=profiles" replace />} />

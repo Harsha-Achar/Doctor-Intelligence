@@ -37,6 +37,7 @@ export function AppLayout() {
     if (location.pathname.startsWith('/doctors')) return 'Golden Records';
     if (location.pathname.startsWith('/doctors')) return 'Golden Records';
     if (location.pathname.startsWith('/review')) return 'Review';
+    if (location.pathname.startsWith('/patients')) return 'Patient Analytics';
     return 'Dashboard';
   }, [location.pathname]);
 

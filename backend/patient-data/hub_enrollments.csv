@@ -1,0 +1,60 @@
+hub_patient_id,hub_case_id,copay_card_id,event,event_date,birth_year,sex,zip3,prescriber_npi,product,payer_type
+HP-1001,H-5001,,Enrolled,2026-03-02,1968,F,303,1576635514,Brand A,Commercial
+HP-1026,H-5026,,Enrolled,2026-03-02,1966,F,303,1576635514,Brand A,Commercial
+HP-1002,H-5002,,Enrolled,2026-03-09,1957,M,981,1060873258,Brand A,Medicare
+HP-1001,H-5001,,Prior authorization approved,2026-03-13,1968,F,303,1576635514,Brand A,Commercial
+HP-1026,H-5026,,Prior authorization approved,2026-03-13,1966,F,303,1576635514,Brand A,Commercial
+HP-1003,H-5003,,Enrolled,2026-03-16,1975,F,606,1309803819,Brand A,Commercial
+HP-1021,H-5021,,Enrolled,2026-03-16,1971,F,850,1983861240,Brand A,Commercial
+HP-1002,H-5002,,Prior authorization approved,2026-03-20,1957,M,981,1060873258,Brand A,Medicare
+HP-1004,H-5004,,Enrolled,2026-03-23,1962,F,554,1196825297,Brand B,Medicare
+HP-1003,H-5003,,Prior authorization approved,2026-03-27,1975,F,606,1309803819,Brand A,Commercial
+HP-1021,H-5021,,Prior authorization approved,2026-03-27,1971,F,850,1983861240,Brand A,Commercial
+HP-1014,H-5014,,Enrolled,2026-03-30,1961,F,441,1567874528,Brand A,Medicare
+HP-1005,H-5005,,Enrolled,2026-04-01,1970,M,752,1704243926,Brand A,Commercial
+HP-1004,H-5004,,Prior authorization approved,2026-04-03,1962,F,554,1196825297,Brand B,Medicare
+HP-1006,H-5006,,Enrolled,2026-04-06,1959,F,441,1567874528,Brand A,Medicare
+HP-1022,H-5022,,Enrolled,2026-04-06,1956,F,972,1370429593,Brand A,Medicare
+HP-1014,H-5014,,Prior authorization approved,2026-04-10,1961,F,441,1567874528,Brand A,Medicare
+HP-1005,H-5005,,Prior authorization approved,2026-04-12,1970,M,752,1704243926,Brand A,Commercial
+HP-1007,H-5007,,Enrolled,2026-04-13,1981,F,972,1370429593,Brand B,Commercial
+HP-1023,H-5023,,Enrolled,2026-04-13,1965,M,981,1060873258,Brand A,Commercial
+HP-1006,H-5006,,Prior authorization approved,2026-04-17,1959,F,441,1567874528,Brand A,Medicare
+HP-1022,H-5022,,Prior authorization approved,2026-04-17,1956,F,972,1370429593,Brand A,Medicare
+HP-1008,H-5008,,Enrolled,2026-04-20,1966,F,282,1458829631,Brand A,Commercial
+HP-1028,H-5028,,Enrolled,2026-04-20,1952,M,021,1500605765,Brand C,Medicare
+HP-1007,H-5007,,Prior authorization approved,2026-04-24,1981,F,972,1370429593,Brand B,Commercial
+HP-1023,H-5023,,Prior authorization approved,2026-04-24,1965,M,981,1060873258,Brand A,Commercial
+HP-1015,H-5015,,Enrolled,2026-04-27,1958,M,554,1196825297,Brand A,Medicare
+HP-1008,H-5008,,Prior authorization approved,2026-05-01,1966,F,282,1458829631,Brand A,Commercial
+HP-1028,H-5028,,Prior authorization approved,2026-05-01,1952,M,021,1500605765,Brand C,Medicare
+HP-1009,H-5009,,Enrolled,2026-05-04,1953,M,850,1983861240,Brand A,Medicare
+HP-1024,H-5024,,Enrolled,2026-05-04,1977,F,554,1196825297,Brand A,Medicaid
+HP-1015,H-5015,,Prior authorization approved,2026-05-08,1958,M,554,1196825297,Brand A,Medicare
+HP-1010,H-5010,,Enrolled,2026-05-11,1972,F,303,1576635514,Brand A,Commercial
+HP-1009,H-5009,,Prior authorization approved,2026-05-15,1953,M,850,1983861240,Brand A,Medicare
+HP-1024,H-5024,,Prior authorization denied,2026-05-15,1977,F,554,1196825297,Brand A,Medicaid
+HP-1011,H-5011,CP-7001,Enrolled,2026-05-18,1979,F,981,1060873258,Brand A,Commercial
+HP-1029,H-5029,,Enrolled,2026-05-18,1970,F,331,1420493599,Brand B,Commercial
+HP-1010,H-5010,,Prior authorization approved,2026-05-22,1972,F,303,1576635514,Brand A,Commercial
+HP-1024,H-5024,,Case closed - insurance denied,2026-05-24,1977,F,554,1196825297,Brand A,Medicaid
+HP-1012,H-5012,CP-7002,Enrolled,2026-05-25,1974,M,606,1309803819,Brand A,Commercial
+HP-1011,H-5011,CP-7001,Prior authorization approved,2026-05-29,1979,F,981,1060873258,Brand A,Commercial
+HP-1029,H-5029,,Prior authorization denied,2026-05-29,1970,F,331,1420493599,Brand B,Commercial
+HP-1013,H-5013,,Enrolled,2026-06-01,1964,F,972,1370429593,Brand A,Commercial
+HP-1012,H-5012,CP-7002,Prior authorization approved,2026-06-05,1974,M,606,1309803819,Brand A,Commercial
+HP-1017,H-5017,,Enrolled,2026-06-08,1969,F,282,1458829631,Brand A,Commercial
+HP-1029,H-5029,,Approved on appeal,2026-06-10,1970,F,331,1420493599,Brand B,Commercial
+HP-1013,H-5013,,Prior authorization approved,2026-06-12,1964,F,972,1370429593,Brand A,Commercial
+HP-1018,H-5018,,Enrolled,2026-06-15,1963,M,752,1704243926,Brand A,Commercial
+HP-1017,H-5017,,Prior authorization approved,2026-06-19,1969,F,282,1458829631,Brand A,Commercial
+HP-1019,H-5019,,Enrolled,2026-06-22,1960,F,303,1576635514,Brand A,Commercial
+HP-1018,H-5018,,Prior authorization approved,2026-06-26,1963,M,752,1704243926,Brand A,Commercial
+HP-1020,H-5020,,Enrolled,2026-06-29,1967,M,606,1309803819,Brand A,Commercial
+HP-1019,H-5019,,Prior authorization approved,2026-07-03,1960,F,303,1576635514,Brand A,Commercial
+HP-1020,H-5020,,Prior authorization approved,2026-07-10,1967,M,606,1309803819,Brand A,Commercial
+HP-1027,H-5027,,Enrolled,2026-07-13,1966,F,303,1576635514,Brand A,Commercial
+HP-1027,H-5027,,Prior authorization approved,2026-07-24,1966,F,303,1576635514,Brand A,Commercial
+HP-1016,H-5016,,Enrolled,2026-08-24,1958,M,554,1196825297,Brand A,Medicare
+HP-1025,H-5025,,Enrolled,2026-09-21,1950,M,441,1567874528,Brand A,Medicare
+HP-1025,H-5025,,Prior authorization approved,2026-10-02,1950,M,441,1567874528,Brand A,Medicare
