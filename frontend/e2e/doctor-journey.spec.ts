@@ -3,7 +3,6 @@ import { expect, test } from '@playwright/test';
 test('dashboard, review, doctor, and how it works', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-  await expect(page.getByText('Synthetic data').first()).toBeVisible();
   await page.screenshot({ path: 'e2e/screenshots/dashboard-before.png', fullPage: true });
 
   await page.getByRole('button', { name: 'Run historical cleanup' }).click();
@@ -11,6 +10,7 @@ test('dashboard, review, doctor, and how it works', async ({ page }) => {
   await page.screenshot({ path: 'e2e/screenshots/processing.png' });
   await expect(page.getByRole('button', { name: 'View dashboard' })).toBeVisible({ timeout: 90_000 });
   await page.getByRole('button', { name: 'View dashboard' }).click();
+  await expect(page.getByRole('heading', { name: 'Impact Without Matching' })).toBeVisible();
   await page.screenshot({ path: 'e2e/screenshots/dashboard-after.png', fullPage: true });
 
   await page.getByRole('button', { name: 'How it works' }).click();

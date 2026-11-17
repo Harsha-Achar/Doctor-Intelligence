@@ -114,6 +114,14 @@ def journey_analytics(brand: str | None = None, payer: str | None = None) -> dic
     as_of_day = parse_iso(as_of) or date.today()
     hub = [item for item in cohort if "hub" in item["sources"]]
     treated = [item for item in cohort if item["facts"].get("dose_count")]
+    # A pharmacy "Shipped" row becomes a dose. A claims line does not: claim_type is
+    # Medical or Pharmacy, and the file has no paid or administered flag.
+    for item in cohort:
+        item["dispensed"] = any(event["source"] == "pharmacy" and event["kind"] == "dose" for event in item["events"])
+    dispensed = list(dict.fromkeys(item["id"] for item in cohort if item["dispensed"]))
+    discontinued = list(
+        dict.fromkeys(item["id"] for item in cohort if item["dispensed"] and item["facts"].get("status") == "Stopped")
+    )
     never = [item for item in hub if item["facts"].get("status") == "Never started"]
     stopped = [item for item in cohort if item["facts"].get("status") == "Stopped"]
     delays = [item for item in treated if item["facts"].get("delays")]
@@ -274,6 +282,7 @@ def journey_analytics(brand: str | None = None, payer: str | None = None) -> dic
             "stop_reason": item["facts"].get("stop_reason") or "",
             "delayed": bool(item["facts"].get("delays")),
             "in_hub": "hub" in item["sources"],
+            "dispensed": bool(item["dispensed"]),
         }
         for item in cohort
     ]
@@ -298,6 +307,9 @@ def journey_analytics(brand: str | None = None, payer: str | None = None) -> dic
             "treated": show(len(treated)),
             "outside_hub_pct": _pct(len(outside), len(treated)),
             "outside_hub": show(len(outside)),
+            "discontinued": show(len(discontinued)),
+            "dispensed": show(len(dispensed)),
+            "discontinuation_pct": _pct(len(discontinued), len(dispensed)),
         },
         "funnel": funnel,
         "never_reasons": [{"label": label, "count": show(count)} for label, count in sorted(reasons.items(), key=lambda pair: -pair[1])],

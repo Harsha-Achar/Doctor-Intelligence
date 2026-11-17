@@ -116,8 +116,6 @@ export function OverviewPage() {
     impact?: Impact;
     by_source?: SourceRow[];
     conflicts?: { npi_conflicts?: StoryItem[]; same_name_pairs?: Impact['pairs'] };
-    alerts?: Array<{ record_id?: string; title?: string; kind?: string; suggested_action?: string; href?: string; quote?: string }>;
-    source_quality?: Array<{ source: string; total: number; present_pct?: number; valid_pct?: number; verified_npi: number }>;
   };
   const cards = story.cards;
   const needsRun = story.needs_run || !cards;
@@ -315,7 +313,7 @@ export function OverviewPage() {
           </div>
           <div className="card" id="impactCard" data-tour="impact">
             <div className="card-h">
-              <h2>What would have gone wrong without this</h2>
+              <h2>Impact Without Matching</h2>
               <span className="hint">Calculated from this run</span>
             </div>
             <div className="card-b">
@@ -414,58 +412,6 @@ export function OverviewPage() {
                     </button>
                   ))}
                   {(story.conflicts?.npi_conflicts || []).length === 0 ? <p className="muted">No NPI conflicts in this run.</p> : null}
-                </div>
-              </div>
-            </div>
-          </div>
-          <div className="grid g2">
-            <div className="card">
-              <div className="card-h">
-                <h2>Change alerts</h2>
-                <span className="hint">Who should act</span>
-              </div>
-              <div className="card-b">
-                <div className="list">
-                  {(story.alerts || []).length === 0 ? <p className="muted">No proposed changes in this run.</p> : null}
-                  {(story.alerts || []).slice(0, 8).map((alert) => (
-                    <button key={`${alert.record_id}-${alert.kind}`} type="button" className="li" onClick={() => navigate(alert.href || '/review')}>
-                      <div className={`ic ${alert.kind === 'retirement' || alert.kind === 'deactivated_npi' ? 'bad' : 'new'}`}>→</div>
-                      <div className="tx">
-                        <b>{alert.title || alert.record_id}</b>
-                        <span>{alert.suggested_action}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="card">
-              <div className="card-h">
-                <h2>Source quality</h2>
-                <span className="hint">NPI present vs valid, by source</span>
-              </div>
-              <div className="card-b">
-                {(story.source_quality || []).map((row) => (
-                  <button key={row.source} type="button" className="qbar" style={{ width: '100%', background: 'none', border: 0, textAlign: 'left' }} onClick={() => openItems(sourceLabel(row.source), story.by_source?.find((item) => item.source === row.source)?.items)}>
-                    <span>{sourceLabel(row.source)}</span>
-                    <span className="track">
-                      <i className="present" style={{ width: `${row.present_pct || 0}%` }} />
-                      <i className="valid" style={{ width: `${row.valid_pct || 0}%` }} />
-                    </span>
-                    <span className="num muted" style={{ textAlign: 'right' }}>
-                      {row.valid_pct || 0}%
-                    </span>
-                  </button>
-                ))}
-                <div className="chips" style={{ marginTop: 8, fontSize: 12, color: 'var(--muted)' }}>
-                  <span>
-                    <span className="dot" style={{ background: 'var(--accent)' }} />
-                    Valid NPI
-                  </span>
-                  <span>
-                    <span className="dot" style={{ background: 'var(--accent-line)' }} />
-                    NPI present
-                  </span>
                 </div>
               </div>
             </div>

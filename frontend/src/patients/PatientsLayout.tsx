@@ -5,14 +5,12 @@ import { ErrorState } from '../components/ErrorState';
 import { useShell } from '../layouts/shell';
 import { fetchOverview } from './api';
 import './patients.css';
-import { Icon } from './widgets';
 
 const TABS = [
-  { to: '/patients', label: 'Data & processing', end: true },
+  { to: '/patients/analytics', label: 'Journey analytics', end: true },
+  { to: '/patients/data', label: 'Data & processing', end: true },
   { to: '/patients/list', label: 'Patients', end: false },
   { to: '/patients/review', label: 'Needs review', end: false },
-  { to: '/patients/analytics', label: 'Journey analytics', end: false },
-  { to: '/patients/privacy', label: 'Privacy & audit', end: false },
 ];
 
 export function PatientsLayout() {
@@ -40,9 +38,6 @@ export function PatientsLayout() {
             </NavLink>
           ))}
         </div>
-        <span className="pill ok">
-          <Icon name="shield" size={13} /> No patient identities received
-        </span>
       </div>
       <div className="brandkey">
         {brands.map((item) => (
@@ -50,7 +45,6 @@ export function PatientsLayout() {
             <b>{item.brand}</b> {item.description}
           </span>
         ))}
-        <span className="faint">Fictional brand names · synthetic patients</span>
       </div>
       {overview.isError ? <ErrorState message="Patient analytics could not be loaded." onRetry={() => overview.refetch()} /> : null}
       <Outlet />

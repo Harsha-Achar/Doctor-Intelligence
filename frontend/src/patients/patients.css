@@ -1,11 +1,14 @@
-.patients { display: grid; gap: 16px; min-width: 0; max-width: 100%; }
+.patients { display: grid; gap: 28px; min-width: 0; max-width: 100%; }
+.patients .stack { display: grid; gap: 28px; align-content: start; }
 .patients > * { min-width: 0; max-width: 100%; }
 .patients .seg { display: flex; flex-wrap: wrap; max-width: 100%; }
 .patients .pthead { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-.patients .brandkey { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--muted); margin-top: -4px; }
+.patients .brandkey { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 12.5px; color: var(--muted); }
 .patients .brandkey b { color: var(--fg); font-weight: 600; margin-right: 3px; }
 .patients .seg a { border: 0; background: none; padding: 6px 12px; border-radius: 7px; color: var(--muted); font-weight: 500; white-space: nowrap; text-decoration: none; }
 .patients .seg a.on { background: var(--surface); color: var(--fg); box-shadow: 0 1px 2px rgba(15,27,45,.12); }
+.patients .kpis { gap: 22px; }
+.patients .grid, .patients .rv { gap: 22px; }
 .patients .kpis.k4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 .patients .kpis.k5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .patients .kpis.k6 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -13,21 +16,22 @@
 .patients .srcbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .patients .srcbar h2 { margin: 0; font-size: 16px; font-weight: 650; }
 .patients .srcbar .chips { margin-left: auto; }
-.patients .srccards { display: grid; gap: 14px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.patients .srccard { text-align: left; overflow: hidden; }
-.patients .srccard .card-b { display: grid; gap: 12px; }
+.patients .srccards { display: grid; gap: 22px; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.patients .srccard { display: grid; grid-template-rows: subgrid; grid-row: span 3; text-align: left; overflow: hidden; }
+.patients .srccard .card-b { display: grid; grid-template-rows: subgrid; grid-row: span 3; gap: 12px; height: 100%; }
+.patients .srccard .card-b > div:first-child { align-items: flex-start; }
 .patients .srccard .ic { width: 38px; height: 38px; border-radius: 10px; display: grid; place-items: center; flex: none; }
 .patients .srccard .ic svg { width: 19px; height: 19px; }
-.patients .mini3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.patients .mini3 div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; display: grid; }
+.patients .mini3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: stretch; }
+.patients .mini3 div { background: var(--surface-2); border-radius: 8px; padding: 8px 10px; display: grid; align-content: start; min-width: 0; }
 .patients .mini3 b { font-size: 18px; font-variant-numeric: tabular-nums; }
 .patients .mini3 span { font-size: 12px; color: var(--muted); }
-.patients .filelist { display: grid; gap: 6px; }
-.patients .fileli { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 7px 10px; text-align: left; font-size: 12.5px; min-width: 0; color: inherit; }
+.patients .filelist { display: grid; gap: 6px; align-content: start; }
+.patients .fileli { display: grid; grid-template-columns: 16px minmax(0, 1fr); column-gap: 8px; row-gap: 1px; align-items: start; border: 1px solid var(--line); background: var(--surface); border-radius: 8px; padding: 8px 10px; text-align: left; font-size: 12.5px; line-height: 1.35; min-width: 0; color: inherit; width: 100%; }
 .patients .fileli:hover { border-color: var(--accent); background: var(--accent-soft); }
-.patients .fileli svg { width: 14px; height: 14px; color: var(--muted); flex: none; }
-.patients .fileli .mono { overflow-wrap: anywhere; }
-.patients .fileli .faint, .patients .fileli .pill { margin-left: auto; }
+.patients .fileli svg { width: 14px; height: 14px; color: var(--muted); grid-column: 1; grid-row: 1; margin-top: 2px; }
+.patients .fileli .mono { grid-column: 2; grid-row: 1; overflow-wrap: break-word; }
+.patients .fileli .faint, .patients .fileli .pill { grid-column: 2; grid-row: 2; margin-left: 0; justify-self: start; white-space: nowrap; }
 .patients .stackbar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--surface-2); }
 .patients .stackbar i { display: block; height: 100%; }
 .patients .mapgrid { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }

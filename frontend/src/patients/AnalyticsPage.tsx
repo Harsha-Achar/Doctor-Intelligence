@@ -27,10 +27,9 @@ export function AnalyticsPage() {
   });
   const body = data.data;
   return (
-    <div data-tour="pt-analytics">
+    <div className="stack" data-tour="pt-analytics">
       {data.isLoading ? <TableSkeleton rows={4} /> : null}
       {data.isError ? <ErrorState message="Journey analytics could not be loaded." onRetry={() => data.refetch()} /> : null}
-      {body?.banner ? <p className="banner warn">{body.banner}</p> : null}
       <div className="card">
         <div className="card-b filterbar">
           <span className="muted">Brand</span>
@@ -45,7 +44,7 @@ export function AnalyticsPage() {
               <button key={value} className={`chip${payer === value ? ' on' : ''}`} type="button" onClick={() => { setPayer(value); setShown(20); }}>{value === 'all' ? 'All' : value}</button>
             ))}
           </div>
-          <span className="faint" style={{ marginLeft: 'auto', fontSize: 12.5 }}>{brand === 'all' ? 'Brands are fictional placeholders' : body?.survival.find((item) => item.brand === brand)?.description}</span>
+          {brand !== 'all' ? <span className="faint" style={{ marginLeft: 'auto', fontSize: 12.5 }}>{body?.survival.find((item) => item.brand === brand)?.description}</span> : null}
         </div>
       </div>
       {body ? <AnalyticsBody data={body} status={status} focus={focus} shown={shown} onStatus={setStatus} onPayer={(value) => { setPayer(value); setShown(20); }} onFocus={(value) => { setFocus(value); setShown(20); }} onMore={() => setShown((value) => value + 20)} /> : null}
@@ -83,6 +82,7 @@ function AnalyticsBody({
     if (status !== 'all' && row.status !== status) return false;
     if (focus === 'multi' && row.sources.length < 2) return false;
     if (focus === 'never' && row.status !== 'Never started') return false;
+    if (focus === 'discontinued' && !(row.status === 'Stopped' && row.dispensed)) return false;
     if (focus === 'delay' && !row.delayed) return false;
     if (focus === 'nohub' && (row.in_hub || (row.status !== 'On therapy' && row.status !== 'Stopped'))) return false;
     if (focus.startsWith('reason:') && (row.status !== 'Never started' || row.stop_reason !== focus.slice(7))) return false;
@@ -108,11 +108,11 @@ function AnalyticsBody({
           <span className="val">{kpis.never_started_pct}%</span>
           <span className="sub">{fmt(kpis.never_started)} of {fmt(kpis.hub_patients)} hub patients · see reasons below</span>
         </button>
-        <div className="kpi">
-          <span className="lbl">On therapy at 6 months</span>
-          <span className="val">{kpis.on_therapy_6_months_pct}%</span>
-          <span className="sub">Among patients who started at least 6 months ago</span>
-        </div>
+        <button className="kpi" type="button" onClick={() => onFocus('discontinued')}>
+          <span className="lbl">Confirmed patient discontinuation rate</span>
+          <span className="val">{kpis.discontinuation_pct}%</span>
+          <span className="sub">{fmt(kpis.discontinued)} of {fmt(kpis.dispensed)} patients with a pharmacy dispense · a claim alone is not a dose</span>
+        </button>
         <button className="kpi" type="button" onClick={() => onFocus('delay')}>
           <span className="lbl">Patients with a dose delay</span>
           <span className="val">{kpis.dose_delay_pct}%</span>
@@ -242,16 +242,6 @@ function AnalyticsBody({
                 ))}
               </tbody>
             </table>
-          </div>
-        </div>
-      </div>
-      <div className="card">
-        <div className="card-h"><h2>What linking adds</h2></div>
-        <div className="card-b">
-          <div className="impact">
-            <div className="tile"><span className="k" style={{ color: 'var(--neu)' }}>Hub data alone</span><b>Access steps</b><p>Shows enrollment, insurance checks and approvals, but not whether the patient stayed on therapy.</p></div>
-            <div className="tile"><span className="k" style={{ color: 'var(--neu)' }}>Claims and pharmacy alone</span><b>Treatment</b><p>Show doses and stops, but not why a patient never started or what caused a delay.</p></div>
-            <div className="tile"><span className="k" style={{ color: 'var(--ok)' }}>Linked to one Daiichi patient ID</span><b>{fmt(kpis.linked_journeys)} full journeys</b><p>Time to therapy, reasons for not starting, persistence and delays for the same anonymous patient, without anyone seeing who they are.</p></div>
           </div>
         </div>
       </div>

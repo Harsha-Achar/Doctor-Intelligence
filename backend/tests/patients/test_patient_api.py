@@ -11,4 +11,16 @@ def test_patient_routes(client):
     assert privacy.status_code == 200
     analytics = client.get("/api/patients/analytics")
     assert analytics.status_code == 200
-    assert analytics.json()["banner"] == "Small-cell rule off for synthetic demo data"
+    body = analytics.json()
+    assert body["banner"] == "Small-cell rule off for synthetic demo data"
+    assert body["kpis"]["discontinued"] == 1
+    assert body["kpis"]["dispensed"] == 27
+    assert body["kpis"]["discontinuation_pct"] == 4
+    claims_only = [row for row in body["journeys"] if row["status"] == "Claims only"]
+    assert claims_only and all(row["dispensed"] is False for row in claims_only)
+    commercial = client.get("/api/patients/analytics", params={"brand": "Brand A", "payer": "Commercial"})
+    assert commercial.status_code == 200
+    assert commercial.json()["kpis"]["discontinued"] == 1
+    medicare = client.get("/api/patients/analytics", params={"payer": "Medicare"})
+    assert medicare.status_code == 200
+    assert medicare.json()["kpis"]["discontinued"] == 0

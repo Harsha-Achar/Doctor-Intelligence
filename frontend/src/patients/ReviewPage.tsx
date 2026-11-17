@@ -69,7 +69,7 @@ export function ReviewPage() {
   const suggestion = topRight != null && openReviews ? `${Math.round((100 * topRight) / Math.max(1, openReviews))}%` : '—';
 
   return (
-    <div data-tour="pt-review">
+    <div className="stack" data-tour="pt-review">
       {queue.isLoading ? <TableSkeleton rows={3} /> : null}
       {queue.isError ? <ErrorState message="The review queue could not be loaded." onRetry={() => queue.refetch()} /> : null}
       {data ? (
@@ -96,10 +96,6 @@ export function ReviewPage() {
           </div>
         </div>
       ) : null}
-      <div className="banner warn">
-        <Icon name="shield" />
-        Decisions use de-identified evidence only: program IDs, birth year, sex, ZIP3, prescriber, product, payer and dates. No names are received or shown.
-      </div>
       <div className="rv">
         <div className="card queue">
           <div className="card-h">

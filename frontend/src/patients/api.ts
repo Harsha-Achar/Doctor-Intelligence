@@ -333,6 +333,7 @@ export type Analytics = {
     stop_reason?: string;
     delayed?: boolean;
     in_hub?: boolean;
+    dispensed?: boolean;
   }[];
 };
 export type Privacy = {

@@ -47,7 +47,7 @@ export function PatientsPage() {
   const asOf = list.data?.as_of_label || countsQuery.data?.as_of_label;
 
   return (
-    <div>
+    <div className="stack">
       {list.isLoading ? <TableSkeleton rows={4} /> : null}
       {list.isError ? <ErrorState message="Patients could not be loaded." onRetry={() => list.refetch()} /> : null}
       <div className="kpis k5">

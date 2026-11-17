@@ -101,7 +101,7 @@ export function DataPage() {
   const fileCount = overview.data?.files ?? sources.data?.sources.reduce((sum, card) => sum + card.files.length, 0) ?? 0;
 
   return (
-    <div>
+    <div className="stack">
       {overview.isLoading ? <TableSkeleton rows={3} /> : null}
       {overview.isError ? <ErrorState message="Rows and patients could not be loaded." onRetry={() => overview.refetch()} /> : null}
       {overview.data ? (
@@ -150,7 +150,7 @@ export function DataPage() {
           return (
             <article key={card.source} className="card srccard" style={{ borderTop: `3px solid ${meta.color}` }}>
               <div className="card-b">
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
                   <span className="ic" style={{ background: `${meta.color}1f`, color: meta.color }}>
                     <Icon name={meta.icon} />
                   </span>
@@ -167,7 +167,7 @@ export function DataPage() {
                 <div className="filelist">
                   {card.files.length === 0 ? <span className="faint">No files yet.</span> : null}
                   {card.files.map((file) => (
-                    <button key={file.id} className="fileli" type="button" onClick={() => setFileId(file.id)}>
+                    <button key={file.id} className="fileli" type="button" title={file.name} onClick={() => setFileId(file.id)}>
                       <Icon name="doc" size={14} />
                       <span className="mono">{file.name}</span>
                       {file.kind === 'uploaded' || file.kind === 'Uploaded' ? <span className="pill new">Uploaded</span> : <span className="faint">{file.period}</span>}
